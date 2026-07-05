@@ -478,14 +478,25 @@ async def send_agent_message(channel: discord.TextChannel, agent_name: str, text
             logger.warning(f"⚠️ Failed to send audio to browser: {e}")
     
     if webhook:
-        # Send message to Discord (text only, no file attachment needed)
-        await webhook.send(
-            content=text,
-            username=agent_name,
-            avatar_url=get_avatar_url(agent_name),
-        )
+        try:
+            # Send message to Discord (text only, no file attachment needed)
+            await webhook.send(
+                content=text,
+                username=agent_name,
+                avatar_url=get_avatar_url(agent_name),
+                wait=True
+            )
+        except Exception as e:
+            logger.error(f"❌ Webhook send failed for {agent_name}: {e}")
+            # Fallback: send as embed with bot if webhook fails
+            embed = discord.Embed(
+                description=text,
+                color=AGENTS[agent_name]["color"],
+            )
+            embed.set_author(name=f"{AGENTS[agent_name]['emoji']} {agent_name}")
+            await channel.send(embed=embed)
     else:
-        # Fallback: send as embed with bot
+        # Fallback: send as embed with bot if no webhook was found
         embed = discord.Embed(
             description=text,
             color=AGENTS[agent_name]["color"],
