@@ -959,7 +959,7 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
         !topic <name/index> - Change topic by name or index
         !topic next         - Go to next topic
     """
-    global current_topic_index
+    global current_topic_index, topic_locked
     
     subcommand = subcommand.strip().lower()
     
@@ -1005,7 +1005,6 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
             await asyncio.sleep(delay)
             await send_agent_message(ctx.channel, opening["agent"], opening["text"])
             
-        global topic_locked
         topic_locked = False
         state["topic_locked"] = False
         save_state(state)
@@ -1033,7 +1032,6 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
                 await asyncio.sleep(delay)
                 await send_agent_message(ctx.channel, opening["agent"], opening["text"])
                 
-            global topic_locked
             topic_locked = False
             state["topic_locked"] = False
             save_state(state)
@@ -1062,7 +1060,6 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
                 await asyncio.sleep(delay)
                 await send_agent_message(ctx.channel, opening["agent"], opening["text"])
                 
-            global topic_locked
             topic_locked = False
             state["topic_locked"] = False
             save_state(state)
@@ -1077,6 +1074,7 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
 @bot.command(name="speak")
 async def cmd_speak(ctx):
     """Invite bots to continue the conversation with 1-2 opening messages."""
+    global topic_locked
     logger.info(f"!speak from {ctx.author.name} in channel {ctx.channel.id}")
 
     if not agent_webhooks:
@@ -1108,7 +1106,6 @@ async def cmd_speak(ctx):
         await send_agent_message(channel, opening["agent"], opening["text"])
 
     # Unlock the conversation automatically so bots can keep speaking
-    global topic_locked
     topic_locked = False
     
     state = load_state()
