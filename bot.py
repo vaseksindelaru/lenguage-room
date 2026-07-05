@@ -1008,6 +1008,14 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
             delay = calculate_delay(opening["text"])
             await asyncio.sleep(delay)
             await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+            
+        global topic_locked
+        topic_locked = False
+        state["topic_locked"] = False
+        save_state(state)
+        if not bots_paused and not conversation_loop.is_running():
+            conversation_loop.start()
+            
         return
     
     # Try to parse as index
@@ -1028,6 +1036,14 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
                 delay = calculate_delay(opening["text"])
                 await asyncio.sleep(delay)
                 await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+                
+            global topic_locked
+            topic_locked = False
+            state["topic_locked"] = False
+            save_state(state)
+            if not bots_paused and not conversation_loop.is_running():
+                conversation_loop.start()
+                
             return
     except ValueError:
         pass
@@ -1049,6 +1065,14 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
                 delay = calculate_delay(opening["text"])
                 await asyncio.sleep(delay)
                 await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+                
+            global topic_locked
+            topic_locked = False
+            state["topic_locked"] = False
+            save_state(state)
+            if not bots_paused and not conversation_loop.is_running():
+                conversation_loop.start()
+                
             return
     
     await ctx.send(f"❌ Topic not found: `{subcommand}`. Use `!topic list` to see available topics.")
@@ -1086,6 +1110,18 @@ async def cmd_speak(ctx):
         delay = calculate_delay(opening["text"])
         await asyncio.sleep(delay)
         await send_agent_message(channel, opening["agent"], opening["text"])
+
+    # Unlock the conversation automatically so bots can keep speaking
+    global topic_locked
+    topic_locked = False
+    
+    state = load_state()
+    state["topic_locked"] = False
+    save_state(state)
+    
+    if not bots_paused and not conversation_loop.is_running():
+        conversation_loop.start()
+        logger.info("▶️ Conversation loop restarted via !speak")
 
     await ctx.send("✅ Bots are speaking!")
 
