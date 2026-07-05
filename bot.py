@@ -570,7 +570,7 @@ async def generate_agent_reply(conversation_context: list, agent_name: str, vacl
 
     # Build conversation summary
     context_text = "\n".join(
-        f"{'Vaclav' if msg['author'] == 'Vaclav' else msg['author']}: {msg['content']}"
+        f"{msg.get('author', msg.get('agent', 'Unknown'))}: {msg['content']}"
         for msg in conversation_context[-10:]  # last 10 messages
     )
 
