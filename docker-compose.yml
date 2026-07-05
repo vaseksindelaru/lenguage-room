@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Ollama local LLM fallback
   ollama:
@@ -10,8 +8,9 @@ services:
       - ollama_data:/root/.ollama
     environment:
       - OLLAMA_KEEP_ALIVE=30m
-    ports:
-      - "11434:11434"
+    # No host port — bot reaches ollama via docker network (avoids conflict with local ollama on :11434)
+    expose:
+      - "11434"
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
@@ -46,6 +45,8 @@ services:
       dockerfile: Dockerfile.bot
     container_name: english-bot
     restart: unless-stopped
+    volumes:
+      - ${HOME}/.english-bot:/root/.english-bot
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}

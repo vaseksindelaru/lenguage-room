@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY bot.py .
+COPY state_manager.py .
 COPY audio_server.py .
 
 ENV PYTHONUNBUFFERED=1

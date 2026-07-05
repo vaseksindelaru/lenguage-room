@@ -24,6 +24,7 @@ import logging
 import tempfile
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
+from pathlib import Path
 
 import discord
 from discord.ext import commands, tasks
@@ -34,6 +35,9 @@ from openai import OpenAI, APIStatusError
 
 # Audio server integration
 from audio_server import init_audio_server
+
+# State management
+from state_manager import load_state, save_state, get_welcome_message, STATE_PATH, MAX_HISTORY
 
 AUDIO_SERVER_URL = "http://localhost:8081/api/audio"
 
@@ -239,6 +243,11 @@ last_topic_change = datetime.now()
 agent_webhooks: Dict[str, discord.Webhook] = {}
 vaclav_voice_webhook: Optional[discord.Webhook] = None
 
+# New state for persistence and topic control
+topic_locked = True       # bots don't start topics automatically
+bots_paused = False       # conversation loop paused
+last_vaclav_activity = datetime.now()  # track user activity for timing
+
 # ─── Topics file ───────────────────────────────────────────────────────────
 TOPICS_FILE = os.path.join(os.path.dirname(__file__), "topics.json")
 
@@ -312,7 +321,7 @@ def _init_llm_clients():
 LLM_CLIENTS = _init_llm_clients()
 
 
-async def _call_ollama_native(messages: list, model: str, temperature: float, max_tokens: int, timeout: int) -> str:
+async def _call_ollama_native(messages: list, model: str, temperature: float, max_tokens: int, timeout: int, url: str) -> str:
     """Call Ollama native /api/chat endpoint."""
     payload = {
         "model": model,
@@ -324,7 +333,7 @@ async def _call_ollama_native(messages: list, model: str, temperature: float, ma
         }
     }
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post("http://localhost:11434/api/chat", json=payload)
+        resp = await client.post(url, json=payload)
         resp.raise_for_status()
         data = resp.json()
         return data.get("message", {}).get("content", "")
@@ -332,15 +341,18 @@ async def _call_ollama_native(messages: list, model: str, temperature: float, ma
 
 async def _warmup_ollama():
     """Pre-load Ollama model to avoid cold-start timeout on first real request."""
+    ollama_provider = next((p for p in LLM_CLIENTS if p["type"] == "ollama_native"), None)
+    if not ollama_provider:
+        return
     try:
         logger.info("🔥 Warming up Ollama model...")
-        # Use a short request to load model into memory
         await _call_ollama_native(
             messages=[{"role": "user", "content": "hi"}],
-            model="qwen2.5:3b",
+            model=ollama_provider["model"],
             temperature=0.7,
             max_tokens=5,
             timeout=120,
+            url=ollama_provider["url"],
         )
         logger.info("✅ Ollama warmup complete")
     except Exception as e:
@@ -368,6 +380,7 @@ async def call_openrouter(messages: list, system: str = "", temperature: float =
                     temperature=temperature,
                     max_tokens=300,
                     timeout=provider.get("timeout", 120),
+                    url=provider["url"],
                 )
             else:
                 # OpenAI-compatible providers (Cerebras, Groq, OpenRouter)
@@ -399,6 +412,20 @@ async def call_openrouter(messages: list, system: str = "", temperature: float =
     
     logger.error(f"❌ ALL LLM PROVIDERS FAILED. Last error: {last_error}")
     return None
+
+
+# ─── Timing Helper ──────────────────────────────────────────────────────────
+import random
+
+def calculate_delay(previous_message: str, base_delay: float = 2.0) -> float:
+    """Delay = base + max(reading_time, audio_time) + jitter. Range: 3–15s."""
+    chars = len(previous_message)
+    reading_speed_cps = 15
+    reading_time = chars / reading_speed_cps
+    words = len(previous_message.split())
+    audio_time = words / 2.5  # ~150 wpm
+    total_delay = base_delay + max(reading_time, audio_time) + random.uniform(0.5, 1.5)
+    return min(max(total_delay, 3.0), 15.0)
 
 
 # ─── TTS (Edge TTS) ───────────────────────────────────────────────────────────
@@ -505,17 +532,23 @@ async def generate_conversation_starter(topic: dict) -> List[Dict]:
             {"agent": "Jordan", "text": f"Oh I've got thoughts on {topic['theme']}! Let's do this."},
         ]
 
-    # Parse response
+    # Parse response (case-insensitive: ALEX: or Alex:)
     results = []
     for line in response.strip().split("\n"):
         line = line.strip()
         if not line:
             continue
         for agent_name in AGENTS:
-            if line.startswith(f"{agent_name}:"):
-                text = line[len(f"{agent_name}:"):].strip()
+            if line.upper().startswith(f"{agent_name}:".upper()):
+                text = line.split(":", 1)[1].strip()
                 results.append({"agent": agent_name, "text": text})
                 break
+
+    if not results:
+        return [
+            {"agent": "Alex", "text": f"Hey everyone! Today we're talking about {topic['theme']}. {topic['hook']}"},
+            {"agent": "Maya", "text": "This should be a great discussion. I'm curious what everyone thinks."},
+        ]
 
     return results[:3]
 
@@ -667,7 +700,16 @@ def get_avatar_url(agent_name: str) -> str:
 @tasks.loop(seconds=25)
 async def conversation_loop():
     """Main conversation loop — agents chat periodically."""
+    global last_vaclav_activity
+    
     if not CHANNEL_ID:
+        return
+
+    if bots_paused:
+        return
+
+    # topic_locked: bots only speak when user messages, !speak, or !topic
+    if topic_locked:
         return
 
     channel = bot.get_channel(CHANNEL_ID)
@@ -683,10 +725,13 @@ async def conversation_loop():
     # Send it
     await send_agent_message(channel, agent_name, text)
 
+    # Adaptive delay based on message length
+    delay = calculate_delay(text)
+    await asyncio.sleep(delay)
+
     # Occasionally (every ~6 cycles) give Sam a moment to check on Vaclav
     cycle_count = len([m for m in conversation_history if "agent" in m])
     if cycle_count % 6 == 0 and cycle_count > 0:
-        await asyncio.sleep(8)
         vaclav_in_recent = any(
             m.get("author") == "Vaclav"
             for m in conversation_history[-8:]
@@ -694,13 +739,13 @@ async def conversation_loop():
         if not vaclav_in_recent:
             sam_text = await generate_agent_reply(conversation_history, "Sam")
             await send_agent_message(channel, "Sam", sam_text)
+            await asyncio.sleep(calculate_delay(sam_text))
 
 
 @conversation_loop.before_loop
 async def before_conversation_loop():
-    """Wait until bot is ready and set up webhooks."""
+    """Wait until bot is ready before conversation loop runs."""
     await bot.wait_until_ready()
-    await setup_webhooks()
 
 
 async def setup_webhooks():
@@ -747,66 +792,60 @@ async def setup_webhooks():
 
 
 # ─── Topic Rotation ─────────────────────────────────────────────────────────
-@tasks.loop(minutes=30)
-async def topic_rotation():
-    """Rotate topics every 30 minutes."""
-    global current_topic_index
-
-    if not CHANNEL_ID:
-        return
-
-    channel = bot.get_channel(CHANNEL_ID)
-    if not channel:
-        return
-
-    current_topic_index = (current_topic_index + 1) % len(TOPICS)
-    new_topic = TOPICS[current_topic_index]
-
-    # Announce topic change
-    embed = discord.Embed(
-        description=f"🔄 **New Topic Time!**\n\nToday's theme: **{new_topic['theme']}**\n\n*New vocabulary to listen for: {', '.join(new_topic['seed_vocab'])}*",
-        color=0x5865F2,
-    )
-    embed.set_author(name="📋 Topic Rotation")
-    await channel.send(embed=embed)
-
-    # Generate opening messages
-    await asyncio.sleep(2)
-    openings = await generate_conversation_starter(new_topic)
-    for opening in openings:
-        await asyncio.sleep(random.randint(3, 7))
-        await send_agent_message(channel, opening["agent"], opening["text"])
-
-    logger.info(f"Topic rotated to: {new_topic['theme']}")
+# DISABLED: Rotate topics every 30 minutes. Now controlled by user via !topic commands.
+# @tasks.loop(minutes=30)
+# async def topic_rotation():
+#     ...
 
 
 # ─── Bot Events ─────────────────────────────────────────────────────────────
 @bot.event
 async def on_ready():
+    global conversation_history, current_topic_index, topic_locked, bots_paused, last_vaclav_activity
+
     logger.info(f"🤖 Bot connected as {bot.user} (ID: {bot.user.id})")
     logger.info(f"📺 Target channel: {CHANNEL_ID}")
     logger.info(f"👤 Vaclav's user ID: {VACLAV_USER_ID}")
 
+    # Restore persisted session state
+    state = load_state()
+    conversation_history = state.get("conversation_history", [])
+    current_topic_index = state.get("current_topic_index", 0)
+    topic_locked = state.get("topic_locked", True)
+    bots_paused = state.get("paused", False)
+    logger.info(f"📂 State loaded from {STATE_PATH}")
+
+    # Webhooks must be ready before any agent can speak (!speak, on_message, etc.)
+    await setup_webhooks()
+
     # Initialize audio server for browser auto-play
     await init_audio_server()
-    logger.info("🔊 Audio server initialized (http://localhost:8080)")
+    logger.info("🔊 Audio server initialized (http://localhost:8081)")
 
     # Warm up Ollama local model (non-blocking, runs in background)
     asyncio.create_task(_warmup_ollama())
 
-    # Start conversation loop if not running
-    if not conversation_loop.is_running():
+    # Welcome back message (no auto topic rotation)
+    channel = bot.get_channel(CHANNEL_ID)
+    if channel:
+        await channel.send(get_welcome_message(state, TOPICS))
+        save_state(state)
+
+    # Start conversation loop only if not paused and not topic-locked
+    if not bots_paused and not topic_locked and not conversation_loop.is_running():
         conversation_loop.start()
         logger.info("▶️ Conversation loop started")
-
-    if not topic_rotation.is_running():
-        topic_rotation.start()
-        logger.info("▶️ Topic rotation started")
+    elif topic_locked:
+        logger.info("🔒 Topic locked — bots wait for your message or !speak")
+    elif bots_paused:
+        logger.info("⏸️ Conversation loop paused (restored from state)")
 
 
 @bot.event
 async def on_message(message: discord.Message):
     """Handle messages — detect Vaclav's messages for special treatment."""
+    global last_vaclav_activity
+    
     if message.author.bot:
         await bot.process_commands(message)
         return
@@ -828,6 +867,18 @@ async def on_message(message: discord.Message):
         "is_vaclav": is_vaclav,
     })
 
+    # Update user activity tracking
+    if is_vaclav:
+        last_vaclav_activity = datetime.now()
+        
+        # Save state after user message
+        state = load_state()
+        state["conversation_history"] = conversation_history[-MAX_HISTORY:]
+        state["current_topic_index"] = current_topic_index
+        state["paused"] = bots_paused
+        state["topic_locked"] = topic_locked
+        save_state(state)
+
     # If Vaclav spoke, trigger a faster agent response
     if is_vaclav:
         logger.info(f"📩 Vaclav said: {message.content}")
@@ -839,48 +890,193 @@ async def on_message(message: discord.Message):
         # Decide who responds
         agent_name = await decide_next_agent()
         
-        # Generate and send response with a slight delay
-        await asyncio.sleep(random.randint(3, 8))
+        # Generate and send response with adaptive delay
         text = await generate_agent_reply(conversation_history, agent_name, vaclav_recent=True)
+        await asyncio.sleep(calculate_delay(text))
         await send_agent_message(message.channel, agent_name, text)
         
         # Sam's follow-up if Vaclav made errors
         if random.random() < 0.4:  # 40% chance Sam adds correction
-            await asyncio.sleep(random.randint(5, 10))
+            sam_delay = calculate_delay(text) + 1.0
+            await asyncio.sleep(sam_delay)
             sam_text = await generate_agent_reply(conversation_history, "Sam", vaclav_recent=True)
             await send_agent_message(message.channel, "Sam", sam_text)
         
-        # Restart the auto loop
-        if not conversation_loop.is_running():
+        # Restart auto loop only when topics are not user-locked
+        if not topic_locked and not bots_paused and not conversation_loop.is_running():
             conversation_loop.start()
 
     await bot.process_commands(message)
 
 
 # ─── Commands ───────────────────────────────────────────────────────────────
+@bot.command(name="pause")
+async def cmd_pause(ctx):
+    """Pause agent responses (for when you want quiet time)."""
+    global bots_paused
+    bots_paused = True
+    if conversation_loop.is_running():
+        conversation_loop.stop()
+    await ctx.send("⏸️ Agents are muted. Use `!resume` to wake them up.")
+    
+    # Persist state
+    state = load_state()
+    state["paused"] = True
+    save_state(state)
+
+
+@bot.command(name="resume")
+async def cmd_resume(ctx):
+    """Resume agent responses."""
+    global bots_paused
+    bots_paused = False
+    if not conversation_loop.is_running():
+        conversation_loop.start()
+        await ctx.send("▶️ Agents are back!")
+    else:
+        await ctx.send("Already running.")
+    
+    # Persist state
+    state = load_state()
+    state["paused"] = False
+    save_state(state)
+
+
 @bot.command(name="topic")
-async def cmd_topic(ctx):
-    """Show current topic and vocabulary."""
-    topic = TOPICS[current_topic_index]
-    embed = discord.Embed(
-        title=f"📚 Current Topic: {topic['theme']}",
-        description=f"{topic['hook']}\n\n**Key vocabulary:** {', '.join(topic['seed_vocab'])}",
-        color=0x5865F2,
-    )
-    await ctx.send(embed=embed)
-
-
-@bot.command(name="nexttopic")
-async def cmd_nexttopic(ctx):
-    """Force next topic immediately."""
+async def cmd_topic(ctx, *, subcommand: str = ""):
+    """Show current topic, list topics, or change topic.
+    
+    Usage:
+        !topic              - Show current topic
+        !topic list         - List all topics with index
+        !topic <name/index> - Change topic by name or index
+        !topic next         - Go to next topic
+    """
     global current_topic_index
-    current_topic_index = (current_topic_index + 1) % len(TOPICS)
-    new_topic = TOPICS[current_topic_index]
-    await ctx.send(f"🔄 Topic changed to: **{new_topic['theme']}**")
-    openings = await generate_conversation_starter(new_topic)
-    for opening in openings:
-        await asyncio.sleep(random.randint(2, 5))
-        await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+    
+    subcommand = subcommand.strip().lower()
+    
+    if not subcommand or subcommand == "show":
+        # Show current topic
+        topic = TOPICS[current_topic_index]
+        embed = discord.Embed(
+            title=f"📚 Current Topic: {topic['theme']}",
+            description=f"{topic['hook']}\n\n**Key vocabulary:** {', '.join(topic['seed_vocab'])}",
+            color=0x5865F2,
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    if subcommand == "list":
+        # List all topics with index
+        lines = []
+        for i, topic in enumerate(TOPICS):
+            marker = "▶️ " if i == current_topic_index else "   "
+            lines.append(f"{marker}{i}: {topic['theme']} — {topic['hook'][:60]}...")
+        embed = discord.Embed(
+            title="📋 Available Topics",
+            description="\n".join(lines),
+            color=0x5865F2,
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    if subcommand == "next":
+        # Go to next topic
+        current_topic_index = (current_topic_index + 1) % len(TOPICS)
+        new_topic = TOPICS[current_topic_index]
+        await ctx.send(f"🔄 Topic changed to: **{new_topic['theme']}**")
+        
+        # Persist state
+        state = load_state()
+        state["current_topic_index"] = current_topic_index
+        save_state(state)
+        
+        openings = await generate_conversation_starter(new_topic)
+        for opening in openings:
+            delay = calculate_delay(opening["text"])
+            await asyncio.sleep(delay)
+            await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+        return
+    
+    # Try to parse as index
+    try:
+        idx = int(subcommand)
+        if 0 <= idx < len(TOPICS):
+            current_topic_index = idx
+            new_topic = TOPICS[current_topic_index]
+            await ctx.send(f"🔄 Topic changed to: **{new_topic['theme']}**")
+            
+            # Persist state
+            state = load_state()
+            state["current_topic_index"] = current_topic_index
+            save_state(state)
+            
+            openings = await generate_conversation_starter(new_topic)
+            for opening in openings:
+                delay = calculate_delay(opening["text"])
+                await asyncio.sleep(delay)
+                await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+            return
+    except ValueError:
+        pass
+    
+    # Try to match by name (partial match)
+    subcommand_lower = subcommand.lower()
+    for i, topic in enumerate(TOPICS):
+        if subcommand_lower in topic["theme"].lower():
+            current_topic_index = i
+            new_topic = TOPICS[current_topic_index]
+            await ctx.send(f"🔄 Topic changed to: **{new_topic['theme']}**")
+            
+            state = load_state()
+            state["current_topic_index"] = current_topic_index
+            save_state(state)
+            
+            openings = await generate_conversation_starter(new_topic)
+            for opening in openings:
+                delay = calculate_delay(opening["text"])
+                await asyncio.sleep(delay)
+                await send_agent_message(ctx.channel, opening["agent"], opening["text"])
+            return
+    
+    await ctx.send(f"❌ Topic not found: `{subcommand}`. Use `!topic list` to see available topics.")
+
+
+@bot.command(name="speak")
+async def cmd_speak(ctx):
+    """Invite bots to continue the conversation with 1-2 opening messages."""
+    logger.info(f"!speak from {ctx.author.name} in channel {ctx.channel.id}")
+
+    if not agent_webhooks:
+        await setup_webhooks()
+
+    if not CHANNEL_ID:
+        await ctx.send("❌ Channel not configured.")
+        return
+
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        await ctx.send("❌ Channel not found.")
+        return
+
+    topic = TOPICS[current_topic_index]
+    await ctx.send(f"💬 Inviting bots to speak about **{topic['theme']}**...")
+
+    openings = await generate_conversation_starter(topic)
+    if not openings:
+        openings = [
+            {"agent": "Alex", "text": f"Hey! Let's talk about {topic['theme']}. {topic['hook']}"},
+            {"agent": "Jordan", "text": "I'm in — this should be fun!"},
+        ]
+
+    logger.info(f"!speak sending {len(openings[:2])} opening messages")
+    for opening in openings[:2]:
+        delay = calculate_delay(opening["text"])
+        await asyncio.sleep(delay)
+        await send_agent_message(channel, opening["agent"], opening["text"])
+
+    await ctx.send("✅ Bots are speaking!")
 
 
 @bot.command(name="helpme")
@@ -917,26 +1113,6 @@ async def cmd_score(ctx):
     embed.add_field(name="Last 30 min", value=str(len(recent)))
     embed.add_field(name="Current streak", value="🔥 Keep going!")
     await ctx.send(embed=embed)
-
-
-@bot.command(name="pause")
-async def cmd_pause(ctx):
-    """Pause agent responses (for when you want quiet time)."""
-    if conversation_loop.is_running():
-        conversation_loop.stop()
-        await ctx.send("⏸️ Agents are muted. Use `!resume` to wake them up.")
-    else:
-        await ctx.send("Already paused.")
-
-
-@bot.command(name="resume")
-async def cmd_resume(ctx):
-    """Resume agent responses."""
-    if not conversation_loop.is_running():
-        conversation_loop.start()
-        await ctx.send("▶️ Agents are back!")
-    else:
-        await ctx.send("Already running.")
 
 
 # ─── Main ───────────────────────────────────────────────────────────────────
