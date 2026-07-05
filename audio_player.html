@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎧 English Room Audio Player</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e; color: #eee; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+        h1 { margin-bottom: 20px; font-size: 1.8rem; color: #5865f2; }
+        .status {
+            padding: 12px 24px; border-radius: 8px; margin-bottom: 20px;
+            font-weight: 600; text-align: center; min-width: 280px;
+        }
+        .status.connected { background: #1e3a5f; border: 1px solid #5865f2; color: #5865f2; }
+        .status.connecting { background: #3a2e1e; border: 1px solid #fee75c; color: #fee75c; }
+        .status.disconnected { background: #3a1e1e; border: 1px solid #ed4245; color: #ed4245; }
+        
+        .agents-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px; width: 100%; max-width: 600px; margin-bottom: 20px;
+        }
+        .agent-card {
+            background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
+            padding: 16px; text-align: center; transition: all 0.2s;
+        }
+        .agent-card.active { border-color: #5865f2; box-shadow: 0 0 15px rgba(88, 101, 242, 0.3); }
+        .agent-emoji { font-size: 2rem; margin-bottom: 8px; }
+        .agent-name { font-weight: 600; color: #fff; }
+        .agent-voice { font-size: 0.75rem; color: #888; margin-top: 4px; }
+        .speaking-indicator { height: 4px; background: #5865f2; border-radius: 2px; margin-top: 8px; transform: scaleX(0); transition: transform 0.1s; }
+        .agent-card.active .speaking-indicator { transform: scaleX(1); }
+        
+        .log { 
+            width: 100%; max-width: 700px; height: 200px; 
+            background: #0f0f1a; border: 1px solid #2a2a4a; border-radius: 8px;
+            padding: 12px; font-family: monospace; font-size: 0.8rem; overflow-y: auto;
+            color: #aaa;
+        }
+        .log-entry { margin: 4px 0; opacity: 0; animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        .log-time { color: #5865f2; }
+        .log-agent { font-weight: 600; }
+        .log-agent.Alex { color: #5865f2; }
+        .log-agent.Maya { color: #57f287; }
+        .log-agent.Jordan { color: #fee75c; }
+        .log-agent.Sam { color: #eb459e; }
+        
+        .controls { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        button { 
+            padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: #5865f2; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #4752c4; }
+        .btn-danger { background: #ed4245; color: white; }
+        .btn-danger:hover:not(:disabled) { background: #c03537; }
+        .btn-secondary { background: #3a3a5a; color: #ccc; }
+        .btn-secondary:hover:not(:disabled) { background: #4a4a6a; }
+
+        /* Voice controls */
+        .voice-controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .mic-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 40px;
+            border-radius: 50%;
+            min-width: 140px;
+            min-height: 140px;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(88, 101, 242, 0.3);
+            transition: all 0.2s;
+        }
+        .mic-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(88, 101, 242, 0.5);
+        }
+        .mic-btn.listening {
+            background: #ed4245 !important;
+            box-shadow: 0 4px 30px rgba(237, 66, 69, 0.5);
+            animation: pulse 1s infinite;
+        }
+        .mic-btn.listening .mic-icon {
+            animation: bounce 0.5s infinite;
+        }
+        .mic-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 30px rgba(237, 66, 69, 0.5); }
+            50% { box-shadow: 0 4px 40px rgba(237, 66, 69, 0.8); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .mic-icon { font-size: 2rem; }
+        .mic-text { font-size: 0.9rem; font-weight: 600; }
+        .voice-status {
+            min-height: 24px;
+            font-size: 0.85rem;
+            color: #888;
+            text-align: center;
+            min-width: 280px;
+        }
+        .voice-status.listening {
+            color: #ed4245;
+            font-weight: 600;
+        }
+        .voice-status.error {
+            color: #ed4245;
+        }
+        .voice-status.success {
+            color: #57f287;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎧 English Room — Auto Audio</h1>
+    <div id="status" class="status connecting">🔄 Conectando...</div>
+    
+    <div class="agents-grid">
+        <div class="agent-card" id="card-Alex">
+            <div class="agent-emoji">🟦</div>
+            <div class="agent-name">Alex</div>
+            <div class="agent-voice">en-US-GuyNeural</div>
+            <div class="speaking-indicator"></div>
+        </div>
+        <div class="agent-card" id="card-Maya">
+            <div class="agent-emoji">🟩</div>
+            <div class="agent-name">Maya</div>
+            <div class="agent-voice">en-US-JennyNeural</div>
+            <div class="speaking-indicator"></div>
+        </div>
+        <div class="agent-card" id="card-Jordan">
+            <div class="agent-emoji">🟧</div>
+            <div class="agent-name">Jordan</div>
+            <div class="agent-voice">en-GB-RyanNeural</div>
+            <div class="speaking-indicator"></div>
+        </div>
+        <div class="agent-card" id="card-Sam">
+            <div class="agent-emoji">🟪</div>
+            <div class="agent-name">Sam</div>
+            <div class="agent-voice">en-US-AriaNeural</div>
+            <div class="speaking-indicator"></div>
+        </div>
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <div class="controls">
+        <button id="btnReconnect" class="btn-secondary" onclick="connect()">🔌 Reconectar</button>
+        <button id="btnClear" class="btn-secondary" onclick="clearLog()">🗑️ Limpiar log</button>
+        <button id="btnTest" class="btn-primary" onclick="testAudio()">🔊 Test audio</button>
+    </div>
+
+    <div class="voice-controls">
+        <button id="btnMic" class="btn-primary mic-btn" onmousedown="startListening(event)" onmouseup="stopListening(event)" onmouseleave="stopListening(event)" ontouchstart="startListening(event)" ontouchend="stopListening(event)">
+            <span class="mic-icon">🎤</span>
+            <span class="mic-text">Mantén para hablar</span>
+        </button>
+        <div id="voiceStatus" class="voice-status"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let audioContext = null;
+        const audioQueue = [];
+        let isPlaying = false;
+        
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        
+        // Agent colors for log
+        const agentColors = {
+            Alex: '#5865f2', Maya: '#57f287', Jordan: '#fee75c', Sam: '#eb459e'
+        };
+        
+        function setStatus(text, className) {
+            statusEl.textContent = text;
+            statusEl.className = 'status ' + className;
+        }
+        
+        function log(message, agent = null) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            const agentSpan = agent ? `<span class="log-agent ${agent}" style="color:${agentColors[agent]}">${agent}</span>: ` : '';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${agentSpan}${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() { logEl.innerHTML = ''; }
+        
+        function activateAgent(agent) {
+            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById('card-' + agent);
+            if (card) card.classList.add('active');
+            setTimeout(() => card?.classList.remove('active'), 2000);
+        }
+        
+        async function playAudio(audioBytes) {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') await audioContext.resume();
+            
+            try {
+                const arrayBuffer = audioBytes.buffer;
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                return new Promise(resolve => source.onended = resolve);
+            } catch (e) {
+                console.error('Audio decode error:', e);
+            }
+        }
+        
+        async function processQueue() {
+            if (isPlaying || audioQueue.length === 0) return;
+            isPlaying = true;
+            
+            while (audioQueue.length > 0) {
+                const { audioBytes, agent } = audioQueue.shift();
+                await playAudio(audioBytes);
+            }
+            
+            isPlaying = false;
+        }
+        
+        function base64ToArrayBuffer(base64) {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes.buffer;
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            
+            setStatus('🔄 Conectando...', 'connecting');
+            ws = new WebSocket('ws://localhost:8081/ws');
+            
+            ws.onopen = () => {
+                setStatus('✅ Conectado — esperando audio', 'connected');
+                log('WebSocket conectado');
+            };
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === 'audio') {
+                    const audioBytes = new Uint8Array(base64ToArrayBuffer(msg.data));
+                    activateAgent(msg.agent);
+                    log(`🔊 Reproduciendo audio de ${msg.agent}`, msg.agent);
+                    audioQueue.push({ audioBytes, agent: msg.agent });
+                    processQueue();
+                } else if (msg.type === 'pong') {
+                    // keepalive
+                }
+            };
+            
+            ws.onclose = () => {
+                setStatus('❌ Desconectado — reintentando en 3s', 'disconnected');
+                log('Desconectado');
+                setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = (err) => {
+                console.error('WS error:', err);
+                setStatus('⚠️ Error de conexión', 'disconnected');
+            };
+        }
+        
+        // Test with a simple beep
+        async function testAudio() {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') await audioContext.resume();
+            
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+            oscillator.frequency.value = 440;
+            gain.gain.value = 0.1;
+            oscillator.start();
+            setTimeout(() => oscillator.stop(), 200);
+            log('🔊 Test beep reproducido');
+        }
+        
+        // Auto-connect on load
+        connect();
+        
+        // Ping every 30s to keep alive
+                setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping' }))
+                    }
+                }, 30000);
+
+                // ─── Speech Recognition (Web Speech API) ──────────────────────────
+                let recognition = null;
+                let isRecognizing = false;
+
+                function initSpeechRecognition() {
+                    // Check for Web Speech API support
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SpeechRecognition) {
+                        const btn = document.getElementById('btnMic');
+                        const status = document.getElementById('voiceStatus');
+                        btn.disabled = true;
+                        btn.textContent = '🎤 No soportado en este navegador';
+                        status.textContent = '⚠️ Speech Recognition no disponible (usa Chrome/Edge)';
+                        status.className = 'voice-status error';
+                        return null;
+                    }
+
+                    recognition = new SpeechRecognition();
+                    recognition.lang = 'en-US';  // English practice
+                    recognition.continuous = false;
+                    recognition.interimResults = true;
+                    recognition.maxAlternatives = 1;
+
+                    recognition.onstart = () => {
+                        isRecognizing = true;
+                        const btn = document.getElementById('btnMic');
+                        const status = document.getElementById('voiceStatus');
+                        btn.classList.add('listening');
+                        btn.querySelector('.mic-text').textContent = 'Escuchando...';
+                        status.textContent = '🎙️ Escuchando... habla ahora';
+                        status.className = 'voice-status listening';
+                    };
+
+                    recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        let interimTranscript = '';
+                
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcript = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcript;
+                            } else {
+                                interimTranscript += transcript;
+                            }
+                        }
+                
+                        const status = document.getElementById('voiceStatus');
+                        if (interimTranscript) {
+                            status.textContent = '🎙️ ' + interimTranscript;
+                        }
+                
+                        if (finalTranscript) {
+                            status.textContent = '✅ Enviando: ' + finalTranscript.trim();
+                            status.className = 'voice-status success';
+                            sendVoiceToDiscord(finalTranscript.trim());
+                        }
+                    };
+
+                    recognition.onerror = (event) => {
+                        const status = document.getElementById('voiceStatus');
+                        const btn = document.getElementById('btnMic');
+                
+                        if (event.error === 'no-speech') {
+                            status.textContent = '🤫 No se detectó voz, intenta de nuevo';
+                            status.className = 'voice-status error';
+                        } else if (event.error === 'audio-capture') {
+                            status.textContent = '🎤 Error: no se puede acceder al micrófono';
+                            status.className = 'voice-status error';
+                        } else if (event.error === 'not-allowed') {
+                            status.textContent = '🚫 Permiso de micrófono denegado';
+                            status.className = 'voice-status error';
+                            btn.disabled = true;
+                        } else {
+                            status.textContent = '❌ Error: ' + event.error;
+                            status.className = 'voice-status error';
+                        }
+                        console.error('Speech recognition error:', event.error);
+                    };
+
+                    recognition.onend = () => {
+                        isRecognizing = false;
+                        const btn = document.getElementById('btnMic');
+                        const status = document.getElementById('voiceStatus');
+                        btn.classList.remove('listening');
+                        btn.querySelector('.mic-text').textContent = 'Mantén para hablar';
+                
+                        if (!status.classList.contains('success') && !status.classList.contains('error')) {
+                            status.textContent = 'Listo para hablar';
+                            status.className = 'voice-status';
+                        }
+                    };
+
+                    return recognition;
+                }
+
+                function startListening(event) {
+                    if (event) event.preventDefault();
+                    if (!recognition) {
+                        if (!initSpeechRecognition()) return;
+                    }
+                    if (isRecognizing) return;
+
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error('Error starting recognition:', e);
+                        const status = document.getElementById('voiceStatus');
+                        status.textContent = '❌ Error al iniciar: ' + e.message;
+                        status.className = 'voice-status error';
+                    }
+                }
+
+                function stopListening(event) {
+                    if (event) event.preventDefault();
+                    if (recognition && isRecognizing) {
+                        recognition.stop();
+                    }
+                }
+
+                async function sendVoiceToDiscord(text) {
+                    try {
+                        // Use relative URL to avoid CORS issues with localhost vs 127.0.0.1
+                        const response = await fetch('/api/voice', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: text })
+                        });
+
+                        const data = await response.json();
+                        const status = document.getElementById('voiceStatus');
+
+                        if (response.ok) {
+                            status.textContent = '✅ Enviado a Discord';
+                            status.className = 'voice-status success';
+                        } else {
+                            status.textContent = '❌ Error: ' + (data.error || 'unknown');
+                            status.className = 'voice-status error';
+                        }
+                    } catch (e) {
+                        console.error('Error sending to Discord:', e);
+                        const status = document.getElementById('voiceStatus');
+                        status.textContent = '❌ Error de conexión: ' + e.message;
+                        status.className = 'voice-status error';
+                    }
+                }
+
+                // Initialize on load
+                initSpeechRecognition();
+            </script>
+</body>
+</html>

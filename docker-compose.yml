@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Ollama local LLM fallback
+  ollama:
+    image: ollama/ollama:latest
+    container_name: english-bot-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=30m
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Audio server (WebSocket + HTTP API for TTS/STT)
+  audio-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.audio
+    container_name: english-bot-audio
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - DISCORD_VOICE_WEBHOOK_URL=${DISCORD_VOICE_WEBHOOK_URL}
+    volumes:
+      - ./audio_player.html:/app/audio_player.html:ro
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Discord bot
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: english-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - CEREBRAS_API_KEY=${CEREBRAS_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CHANNEL_ID=${CHANNEL_ID}
+      - VACLAV_USER_ID=${VACLAV_USER_ID}
+      - OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+      - AUDIO_SERVER_URL=http://audio-server:8081
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      audio-server:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama_data:
+
+networks:
+  default:
+    name: english-bot-network
