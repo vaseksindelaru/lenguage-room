@@ -869,7 +869,9 @@ async def on_message(message: discord.Message):
     """Handle messages — detect Vaclav's messages for special treatment."""
     global last_vaclav_activity
     
-    if message.author.bot:
+    is_vaclav_voice = message.author.bot and message.content.startswith("🎤 **Vaclav (voice):**")
+    
+    if message.author.bot and not is_vaclav_voice:
         await bot.process_commands(message)
         return
 
@@ -882,7 +884,7 @@ async def on_message(message: discord.Message):
         return
 
     # Record message in history
-    is_vaclav = not message.author.bot
+    is_vaclav = not message.author.bot or is_vaclav_voice
     author_name = "Vaclav" if is_vaclav else message.author.name
     
     conversation_history.append({
