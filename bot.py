@@ -589,6 +589,13 @@ async def generate_agent_reply(conversation_context: list, agent_name: str, vacl
                 "\n⚠️ Vaclav hasn't spoken recently. GENTLY invite him into the conversation.\n"
                 "Ask him a specific question related to the discussion. Make it easy for him to jump in."
             )
+    else:
+        if vaclav_recent:
+            extra_instruction = (
+                "\n⚠️ IMPORTANT: Vaclav just spoke! You MUST heavily prioritize his message.\n"
+                "Directly answer any questions he asks, fulfill his requests, and respond to his points "
+                "BEFORE you continue with the previous topic or your own thoughts."
+            )
 
     prompt = f"""Recent conversation:
 {context_text}
@@ -596,7 +603,8 @@ async def generate_agent_reply(conversation_context: list, agent_name: str, vacl
 {extra_instruction}
 
 Now it's your turn to speak, {agent_name}. 
-Keep your message SHORT (1-3 sentences). React to what was just said.
+Keep your message SHORT (1-3 sentences). React naturally and directly to the conversation.
+If Vaclav just spoke, your primary goal is to address him!
 Output ONLY your message text, nothing else."""
 
     messages = [{"role": "user", "content": prompt}]
@@ -874,9 +882,11 @@ async def on_message(message: discord.Message):
         return
 
     # Record message in history
-    is_vaclav = message.author.id == VACLAV_USER_ID
+    is_vaclav = not message.author.bot
+    author_name = "Vaclav" if is_vaclav else message.author.name
+    
     conversation_history.append({
-        "author": message.author.name,
+        "author": author_name,
         "content": message.content,
         "timestamp": datetime.now().isoformat(),
         "is_vaclav": is_vaclav,
