@@ -723,6 +723,10 @@ async def conversation_loop():
     if topic_locked:
         return
 
+    # If Vaclav just spoke, skip this cycle to let the manual response flow
+    if last_vaclav_activity and (datetime.now() - last_vaclav_activity).total_seconds() < 25:
+        return
+
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
         return
@@ -894,10 +898,6 @@ async def on_message(message: discord.Message):
     if is_vaclav:
         logger.info(f"📩 Vaclav said: {message.content}")
         
-        # Pause the auto loop momentarily
-        if conversation_loop.is_running():
-            conversation_loop.stop()
-        
         # Decide who responds
         agent_name = await decide_next_agent()
         
@@ -912,10 +912,6 @@ async def on_message(message: discord.Message):
             await asyncio.sleep(sam_delay)
             sam_text = await generate_agent_reply(conversation_history, "Sam", vaclav_recent=True)
             await send_agent_message(message.channel, "Sam", sam_text)
-        
-        # Restart auto loop only when topics are not user-locked
-        if not topic_locked and not bots_paused and not conversation_loop.is_running():
-            conversation_loop.start()
 
     await bot.process_commands(message)
 
@@ -927,7 +923,7 @@ async def cmd_pause(ctx):
     global bots_paused
     bots_paused = True
     if conversation_loop.is_running():
-        conversation_loop.stop()
+        conversation_loop.cancel()
     await ctx.send("⏸️ Agents are muted. Use `!resume` to wake them up.")
     
     # Persist state
