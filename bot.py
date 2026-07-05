@@ -959,7 +959,7 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
         !topic <name/index> - Change topic by name or index
         !topic next         - Go to next topic
     """
-    global current_topic_index, topic_locked
+    global current_topic_index, topic_locked, bots_paused
     
     subcommand = subcommand.strip().lower()
     
@@ -1006,9 +1006,11 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
             await send_agent_message(ctx.channel, opening["agent"], opening["text"])
             
         topic_locked = False
+        bots_paused = False
         state["topic_locked"] = False
+        state["paused"] = False
         save_state(state)
-        if not bots_paused and not conversation_loop.is_running():
+        if not conversation_loop.is_running():
             conversation_loop.start()
             
         return
@@ -1061,9 +1063,11 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
                 await send_agent_message(ctx.channel, opening["agent"], opening["text"])
                 
             topic_locked = False
+            bots_paused = False
             state["topic_locked"] = False
+            state["paused"] = False
             save_state(state)
-            if not bots_paused and not conversation_loop.is_running():
+            if not conversation_loop.is_running():
                 conversation_loop.start()
                 
             return
@@ -1074,7 +1078,7 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
 @bot.command(name="speak")
 async def cmd_speak(ctx):
     """Invite bots to continue the conversation with 1-2 opening messages."""
-    global topic_locked
+    global topic_locked, bots_paused
     logger.info(f"!speak from {ctx.author.name} in channel {ctx.channel.id}")
 
     if not agent_webhooks:
@@ -1107,12 +1111,14 @@ async def cmd_speak(ctx):
 
     # Unlock the conversation automatically so bots can keep speaking
     topic_locked = False
+    bots_paused = False
     
     state = load_state()
     state["topic_locked"] = False
+    state["paused"] = False
     save_state(state)
     
-    if not bots_paused and not conversation_loop.is_running():
+    if not conversation_loop.is_running():
         conversation_loop.start()
         logger.info("▶️ Conversation loop restarted via !speak")
 
