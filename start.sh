@@ -7,6 +7,10 @@
 
 set -e
 
+# CRITICAL: Unset PYTHONPATH to avoid contamination from host/Hermes environments
+# This ensures the venv is properly isolated
+unset PYTHONPATH
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
