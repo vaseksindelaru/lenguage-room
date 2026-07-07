@@ -1,6 +1,6 @@
 """
 =============================================================================
-"The Conversation Room" — Discord Bot for English Practice
+"KRK-9" — Discord Bot for KRK-9 English Practice
 =============================================================================
 
 A Discord bot that simulates a conversation room with 4 AI agents
@@ -226,7 +226,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
-logger = logging.getLogger("conversation-room")
+logger = logging.getLogger("krk-9")
 
 # ─── Bot setup ──────────────────────────────────────────────────────────────
 intents = discord.Intents.default()

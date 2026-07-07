@@ -130,7 +130,24 @@
     </style>
 </head>
 <body>
-    <h1>🎧 English Room — Auto Audio</h1>
+    <!-- Logo configurable -->
+    <div id="logo-container" style="margin-bottom: 20px; text-align: center;">
+        <img id="logo" src="/static/logo.png" alt="KRK-9 Logo" 
+             style="max-height: 120px; max-width: 300px; display: none;" 
+             onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
+        <h1 id="logo-text" style="display: none; font-size: 2.2rem; color: #5865f2; margin-bottom: 20px;">KRK-9</h1>
+    </div>
+    
+    <script>
+        // Try to load logo, show text fallback if fails
+        const logoImg = document.getElementById('logo');
+        logoImg.onload = function() { this.style.display = 'block'; };
+        logoImg.onerror = function() { 
+            this.style.display = 'none'; 
+            document.getElementById('logo-text').style.display = 'block'; 
+        };
+    </script>
+    
     <div id="status" class="status connecting">🔄 Conectando...</div>
     
     <div class="agents-grid">
@@ -440,10 +457,10 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ text: text })
                         });
-
+                        
                         const data = await response.json();
                         const status = document.getElementById('voiceStatus');
-
+                        
                         if (response.ok) {
                             status.textContent = '✅ Enviado a Discord';
                             status.className = 'voice-status success';
@@ -458,9 +475,53 @@
                         status.className = 'voice-status error';
                     }
                 }
-
+                
+                // Generate invite link
+                async function generateInvite() {
+                    const btn = document.getElementById('btnInvite');
+                    const resultDiv = document.getElementById('invite-result');
+                    
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Generando...';
+                    resultDiv.textContent = '';
+                    
+                    try {
+                        const response = await fetch('/api/invite');
+                        const data = await response.json();
+                        
+                        if (response.ok && data.invite_link) {
+                            resultDiv.innerHTML = `
+                                ✅ <b>Invite link generado:</b><br>
+                                <a href="${data.invite_link}" target="_blank">${data.invite_link}</a><br>
+                                <button onclick="navigator.clipboard.writeText('${data.invite_link}')">
+                                    📋 Copiar link
+                                </button>
+                            `;
+                            resultDiv.className = 'voice-status success';
+                        } else {
+                            resultDiv.textContent = '❌ Error: ' + (data.error || 'No se pudo generar el invite');
+                            resultDiv.className = 'voice-status error';
+                        }
+                    } catch (e) {
+                        resultDiv.textContent = '❌ Error de conexión: ' + e.message;
+                        resultDiv.className = 'voice-status error';
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '👥 Invitar amigos';
+                    }
+                }
+                
                 // Initialize on load
                 initSpeechRecognition();
             </script>
-</body>
+            
+            <!-- Invite friends button -->
+            <div class="invite-section" style="margin-top: 30px; text-align: center; padding: 20px;">
+                <button id="btnInvite" class="btn-primary" onclick="generateInvite()" 
+                        style="padding: 12px 24px; font-size: 1rem;">
+                    👥 Invitar amigos
+                </button>
+                <div id="invite-result" style="margin-top: 12px; font-size: 0.9rem;"></div>
+            </div>
+        </body>
 </html>

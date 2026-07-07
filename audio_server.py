@@ -139,6 +139,45 @@ async def voice_text_handler(request):
         return web.json_response({"error": str(e)}, status=500)
 
 
+async def invite_handler(request):
+    """Generate a Discord invite link (requires DISCORD_BOT_TOKEN in env)."""
+    import os
+    bot_token = os.getenv("DISCORD_BOT_TOKEN")
+    guild_id = os.getenv("GUILD_ID", "")
+    channel_id = os.getenv("CHANNEL_ID", "")
+    
+    if not bot_token:
+        return web.json_response({"error": "DISCORD_BOT_TOKEN not set"}, status=500)
+    
+    if not guild_id or not channel_id:
+        return web.json_response({"error": "GUILD_ID or CHANNEL_ID not set"}, status=500)
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Create invite for the guild (server)
+            url = f"https://discord.com/api/v10/guilds/{guild_id}/invites"
+            headers = {
+                "Authorization": f"Bot {bot_token}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "max_age": 86400,  # 24 hours
+                "max_uses": 0,      # unlimited
+                "temporary": False
+            }
+            
+            async with session.post(url, json=payload, headers=headers) as resp:
+                if resp.status == 201:
+                    data = await resp.json()
+                    invite_link = f"https://discord.gg/{data['code']}"
+                    return web.json_response({"invite_link": invite_link})
+                else:
+                    error_text = await resp.text()
+                    return web.json_response({"error": f"Failed to create invite: {resp.status} - {error_text}"}, status=500)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
 async def start_audio_server():
     """Start the aiohttp server."""
     app = web.Application()
@@ -157,7 +196,10 @@ async def start_audio_server():
             allow_headers="*",
             allow_methods="*",
         ),
-    })
+    }
+    
+    # Serve static files (logo, custom CSS, etc.)
+    app.router.add_static('/static/', path='./static', name='static', show_index=True)
     
     app.router.add_get('/ws', websocket_handler)
     app.router.add_get('/', index_handler)
@@ -170,8 +212,10 @@ async def start_audio_server():
     # Add POST routes with CORS
     audio_route = app.router.add_post('/api/audio', broadcast_audio_http)
     voice_route = app.router.add_post('/api/voice', voice_text_handler)
+    invite_route = app.router.add_get('/api/invite', invite_handler)
     cors.add(audio_route)
     cors.add(voice_route)
+    cors.add(invite_route)
     
     runner = web.AppRunner(app)
     await runner.setup()
