@@ -866,39 +866,41 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    """Handle messages — detect Vaclav's messages for special treatment."""
-    global last_vaclav_activity
-    
+    """Handle messages — multi-user: any human can talk to bots."""
+    global last_vaclav_activity  # keep variable name for compatibility
+
+    # Ignore other bots (except Vaclav's voice relay)
     is_vaclav_voice = message.author.bot and message.content.startswith("🎤 **Vaclav (voice):**")
-    
     if message.author.bot and not is_vaclav_voice:
         await bot.process_commands(message)
         return
 
+    # Only respond in the designated channel
     if message.channel.id != CHANNEL_ID:
-        await bot.process_commands(message)
         return
 
+    # Ignore commands (they are handled by process_commands below)
     if message.content.startswith("!"):
         await bot.process_commands(message)
         return
 
-    # Record message in history
-    is_vaclav = not message.author.bot or is_vaclav_voice
-    author_name = "Vaclav" if is_vaclav else message.author.name
-    
+    # MULTI-USER: any human (non-bot) can trigger bots
+    is_human = True  # message.author is not a bot (already filtered above)
+    author_name = message.author.name  # real Discord name: Vaclav, Ronny, etc.
+
+    # Add to conversation history
     conversation_history.append({
         "author": author_name,
         "content": message.content,
         "timestamp": datetime.now().isoformat(),
-        "is_vaclav": is_vaclav,
+        "is_human": is_human,
     })
 
-    # Update user activity tracking
-    if is_vaclav:
-        last_vaclav_activity = datetime.now()
-        
-        # Save state after user message
+    # Update activity tracking (for any human)
+    if is_human:
+        last_vaclav_activity = datetime.now()  # reuse variable name
+
+        # Save state
         state = load_state()
         state["conversation_history"] = conversation_history[-MAX_HISTORY:]
         state["current_topic_index"] = current_topic_index
@@ -906,24 +908,23 @@ async def on_message(message: discord.Message):
         state["topic_locked"] = topic_locked
         save_state(state)
 
-    # If Vaclav spoke, trigger a faster agent response
-    if is_vaclav:
-        logger.info(f"📩 Vaclav said: {message.content}")
-        
-        # Decide who responds
-        agent_name = await decide_next_agent()
-        
-        # Generate and send response with adaptive delay
-        text = await generate_agent_reply(conversation_history, agent_name, vaclav_recent=True)
-        await asyncio.sleep(calculate_delay(text))
-        await send_agent_message(message.channel, agent_name, text)
-        
-        # Sam's follow-up if Vaclav made errors
-        if random.random() < 0.4:  # 40% chance Sam adds correction
-            sam_delay = calculate_delay(text) + 1.0
-            await asyncio.sleep(sam_delay)
-            sam_text = await generate_agent_reply(conversation_history, "Sam", vaclav_recent=True)
-            await send_agent_message(message.channel, "Sam", sam_text)
+    # Trigger agent response for ANY human
+    logger.info(f"📩 {author_name} said: {message.content}")
+
+    # Decide which agent responds
+    agent_name = await decide_next_agent()
+
+    # Generate and send response
+    text = await generate_agent_reply(conversation_history, agent_name, vaclav_recent=True)
+    await asyncio.sleep(calculate_delay(text))
+    await send_agent_message(message.channel, agent_name, text)
+
+    # Sam's follow-up (40% chance)
+    if random.random() < 0.4:
+        sam_delay = calculate_delay(text) + 1.0
+        await asyncio.sleep(sam_delay)
+        sam_text = await generate_agent_reply(conversation_history, "Sam", vaclav_recent=True)
+        await send_agent_message(message.channel, "Sam", sam_text)
 
     await bot.process_commands(message)
 
