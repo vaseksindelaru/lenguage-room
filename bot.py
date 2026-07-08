@@ -867,8 +867,13 @@ async def on_ready():
 @bot.event
 async def on_message(message: discord.Message):
     """Handle messages — multi-user: any human can talk to bots."""
-    global last_vaclav_activity  # keep variable name for compatibility
-
+    global last_vaclav_activity, ignore_bot_messages  # ADD ignore_bot_messages
+    
+    # ✅ FIX: Ignore messages during !speak execution
+    if ignore_bot_messages:
+        logger.debug("on_message: ignoring message during !speak")
+        return
+    
     # ✅ FIX: Ignore ALL bot messages (including self)
     if message.author.bot:
         # Allow Vaclav's voice relay
@@ -1090,17 +1095,23 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
 
 # Global lock to prevent duplicate !speak executions
 speak_lock = asyncio.Lock()
+# Flag to prevent on_message from responding during !speak
+ignore_bot_messages = False
 
 @bot.command(name="speak")
 async def cmd_speak(ctx):
     """Invite bots to continue the conversation."""
+    global topic_locked, bots_paused, conversation_history, ignore_bot_messages
+    
     # ✅ FIX: Prevent duplicate execution
     if speak_lock.locked():
         logger.warning(f"!speak ignored: already running (from {ctx.author.name})")
         return
     
     async with speak_lock:
-        global topic_locked, bots_paused, conversation_history
+        # ✅ FIX: Tell on_message to ignore bot messages during this command
+        ignore_bot_messages = True
+        
         logger.info(f"!speak from {ctx.author.name}")
 
         if not agent_webhooks:
@@ -1109,6 +1120,7 @@ async def cmd_speak(ctx):
         channel = bot.get_channel(CHANNEL_ID)
         if not channel:
             await ctx.send("❌ Channel not found.")
+            ignore_bot_messages = False
             return
 
         # Send "Inviting" message ONLY ONCE
@@ -1138,8 +1150,6 @@ async def cmd_speak(ctx):
             })
 
         # ✅ FIX: DO NOT touch conversation_loop here
-        # Let the loop run on its own schedule (every 25s)
-        # Just unlock the topic so the loop can proceed
         topic_locked = False
         bots_paused = False
         
@@ -1151,6 +1161,10 @@ async def cmd_speak(ctx):
         save_state(state)
 
         await ctx.send("✅ Bots are speaking!")
+        
+        # ✅ FIX: Wait a moment, then allow on_message to process again
+        await asyncio.sleep(2.0)
+        ignore_bot_messages = False
 
 
 @bot.command(name="helpme")
