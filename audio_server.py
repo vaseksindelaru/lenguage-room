@@ -184,19 +184,19 @@ async def start_audio_server():
     
     # Setup CORS
     cors = aiohttp_cors.setup(app, defaults={
-        "http://localhost:8081": aiohttp_cors.ResourceOptions(
+        'http://localhost:8081': aiohttp_cors.ResourceOptions(
             allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-            allow_methods="*",
+            expose_headers='*',
+            allow_headers='*',
+            allow_methods='*',
         ),
-        "http://127.0.0.1:8081": aiohttp_cors.ResourceOptions(
+        'http://127.0.0.1:8081': aiohttp_cors.ResourceOptions(
             allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-            allow_methods="*",
+            expose_headers='*',
+            allow_headers='*',
+            allow_methods='*',
         ),
-    }
+    })
     
     # Serve static files (logo, custom CSS, etc.)
     app.router.add_static('/static/', path='./static', name='static', show_index=True)
