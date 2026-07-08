@@ -1091,7 +1091,7 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
 @bot.command(name="speak")
 async def cmd_speak(ctx):
     """Invite bots to continue the conversation with 1-2 opening messages."""
-    global topic_locked, bots_paused
+    global topic_locked, bots_paused, conversation_history
     logger.info(f"!speak from {ctx.author.name} in channel {ctx.channel.id}")
 
     if not agent_webhooks:
@@ -1117,23 +1117,49 @@ async def cmd_speak(ctx):
         ]
 
     logger.info(f"!speak sending {len(openings[:2])} opening messages")
+    
+    # Send opening messages AND add them to history
     for opening in openings[:2]:
         delay = calculate_delay(opening["text"])
         await asyncio.sleep(delay)
         await send_agent_message(channel, opening["agent"], opening["text"])
-
-    # Unlock the conversation automatically so bots can keep speaking
+        
+        # ✅ FIX: Add bot messages to history to avoid duplicates
+        conversation_history.append({
+            "author": opening["agent"],
+            "content": opening["text"],
+            "timestamp": datetime.now().isoformat(),
+            "is_human": False,
+        })
+    
+    # ✅ FIX: Force conversation loop to start IMMEDIATELY
     topic_locked = False
     bots_paused = False
     
+    # Cancel and restart to trigger immediate execution
+    if conversation_loop.is_running():
+        conversation_loop.cancel()
+    conversation_loop.start()
+    
+    # ✅ FIX: Also trigger one immediate response (don't wait 25s)
+    agent_name = await decide_next_agent()
+    text = await generate_agent_reply(conversation_history, agent_name)
+    await asyncio.sleep(calculate_delay(text))
+    await send_agent_message(channel, agent_name, text)
+    
+    # Add this response to history too
+    conversation_history.append({
+        "author": agent_name,
+        "content": text,
+        "timestamp": datetime.now().isoformat(),
+        "is_human": False,
+    })
+
     state = load_state()
     state["topic_locked"] = False
     state["paused"] = False
+    state["conversation_history"] = conversation_history[-MAX_HISTORY:]
     save_state(state)
-    
-    if not conversation_loop.is_running():
-        conversation_loop.start()
-        logger.info("▶️ Conversation loop restarted via !speak")
 
     await ctx.send("✅ Bots are speaking!")
 
