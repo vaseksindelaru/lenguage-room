@@ -130,16 +130,34 @@
     </style>
 </head>
 <body>
-    <!-- Logo / Title -->
-    <div id="title-container" style="margin-bottom: 25px; text-align: center;">
-        <h1 id="app-title" style="
-            font-size: 3rem;
-            color: #5865f2;
-            margin: 0;
-            font-weight: bold;
-            letter-spacing: 2px;
-        ">KRK-9</h1>
-        <p style="color: #aaa; font-size: 0.9rem; margin-top: 5px;">English Practice Room</p>
+    <!-- Logo configurable -->
+    <div id="logo-container" style="
+        margin-bottom: 25px; 
+        text-align: center;
+        display: inline-block;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 0 20px rgba(88, 101, 242, 0.3);
+        background: #1a1a2e;
+    ">
+        <img id="logo" src="/static/logo_circular.png?t=202407081400" alt="KRK-9 Logo" 
+             style="
+                width: 160px; 
+                height: 160px; 
+                display: none; 
+                border-radius: 50%;
+                object-fit: cover;
+             "
+             onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
+        <h1 id="logo-text" style="
+                display: none; 
+                font-size: 2.5rem; 
+                color: #5865f2; 
+                margin-bottom: 20px;
+                font-weight: bold;
+            ">KRK-9</h1>
     </div>
     
     <script>
