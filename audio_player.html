@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎧 English Room Audio Player</title>
+    <title>🎧 KRK-9 Audio Player</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -127,29 +127,37 @@
         .voice-status.success {
             color: #57f287;
         }
+
+        /* Audio activation banner */
+        #audioBanner {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: white; font-size: 1.5rem; text-align: center;
+            padding: 20px; flex-direction: column; gap: 20px;
+        }
+        #audioBanner:hover { background: rgba(0,0,0,0.95); }
+        #audioBanner .icon { font-size: 4rem; }
+        #audioBanner .title { font-size: 1.8rem; font-weight: 700; }
+        #audioBanner .subtitle { font-size: 1rem; color: #aaa; max-width: 500px; line-height: 1.5; }
     </style>
 </head>
 <body>
+    <!-- Audio activation banner (required by browser autoplay policy) -->
+    <div id="audioBanner">
+        <div class="icon">🔊</div>
+        <div class="title">Haz clic para activar el audio</div>
+        <div class="subtitle">
+            Los navegadores requieren un clic del usuario antes de reproducir audio.<br>
+            Haz clic en cualquier parte de esta pantalla para continuar.
+        </div>
+    </div>
+
     <!-- Logo configurable -->
-    <div id="logo-container" style="
-        margin-bottom: 25px; 
-        text-align: center;
-    ">
+    <div id="logo-container" style="margin-bottom: 25px; text-align: center;">
         <img id="logo" src="/static/logo.png?t=202407090200" alt="KRK-9 Logo" 
-             style="
-                max-width: 300px; 
-                max-height: 200px; 
-                display: none; 
-                object-fit: contain;
-             " 
-             onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
-        <h1 id="logo-text" style="
-                display: none; 
-                font-size: 2.5rem; 
-                color: #5865f2; 
-                margin-bottom: 20px;
-                font-weight: bold;
-            ">KRK-9</h1>
+             style="max-width: 300px; max-height: 200px; display: none; object-fit: contain;"> 
+        <h1 id="logo-text" style="display: none; font-size: 2.5rem; color: #5865f2; margin-bottom: 20px; font-weight: bold;">KRK-9</h1>
     </div>
     
     <script>
@@ -161,9 +169,9 @@
             document.getElementById('logo-text').style.display = 'block'; 
         };
     </script>
-    
+
     <div id="status" class="status connecting">🔄 Conectando...</div>
-    
+
     <div class="agents-grid">
         <div class="agent-card" id="card-Alex">
             <div class="agent-emoji">🟦</div>
@@ -190,9 +198,9 @@
             <div class="speaking-indicator"></div>
         </div>
     </div>
-    
+
     <div class="log" id="log"></div>
-    
+
     <div class="controls">
         <button id="btnReconnect" class="btn-secondary" onclick="connect()">🔌 Reconectar</button>
         <button id="btnClear" class="btn-secondary" onclick="clearLog()">🗑️ Limpiar log</button>
@@ -334,229 +342,169 @@
             log('🔊 Test beep reproducido');
         }
         
-        // Auto-connect on load
-        connect();
-        
-        // ✅ FIX: Activate audio on first user interaction (required by browsers)
-        let audioActivated = false;
-        document.addEventListener('click', async () => {
-            if (!audioActivated) {
-                audioActivated = true;
-                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') await audioContext.resume();
-                log('🔊 Audio activated by user interaction');
-            }
-        }, { once: false });
-        
-        // Also activate on touch (mobile)
-        document.addEventListener('touchstart', async () => {
-            if (!audioActivated) {
-                audioActivated = true;
-                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') await audioContext.resume();
-                log('🔊 Audio activated by touch');
-            }
-        }, { once: false });
-        
-        // Ping every 30s to keep alive
-                setInterval(() => {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'ping' }))
-                    }
-                }, 30000);
-
-                // ─── Speech Recognition (Web Speech API) ──────────────────────────
-                let recognition = null;
-                let isRecognizing = false;
-
-                function initSpeechRecognition() {
-                    // Check for Web Speech API support
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    if (!SpeechRecognition) {
-                        const btn = document.getElementById('btnMic');
-                        const status = document.getElementById('voiceStatus');
-                        btn.disabled = true;
-                        btn.textContent = '🎤 No soportado en este navegador';
-                        status.textContent = '⚠️ Speech Recognition no disponible (usa Chrome/Edge)';
-                        status.className = 'voice-status error';
-                        return null;
-                    }
-
-                    recognition = new SpeechRecognition();
-                    recognition.lang = 'en-US';  // English practice
-                    recognition.continuous = false;
-                    recognition.interimResults = true;
-                    recognition.maxAlternatives = 1;
-
-                    recognition.onstart = () => {
-                        isRecognizing = true;
-                        const btn = document.getElementById('btnMic');
-                        const status = document.getElementById('voiceStatus');
-                        btn.classList.add('listening');
-                        btn.querySelector('.mic-text').textContent = 'Escuchando...';
-                        status.textContent = '🎙️ Escuchando... habla ahora';
-                        status.className = 'voice-status listening';
-                    };
-
-                    recognition.onresult = (event) => {
-                        let finalTranscript = '';
-                        let interimTranscript = '';
-                
-                        for (let i = event.resultIndex; i < event.results.length; i++) {
-                            const transcript = event.results[i][0].transcript;
-                            if (event.results[i].isFinal) {
-                                finalTranscript += transcript;
-                            } else {
-                                interimTranscript += transcript;
-                            }
-                        }
-                
-                        const status = document.getElementById('voiceStatus');
-                        if (interimTranscript) {
-                            status.textContent = '🎙️ ' + interimTranscript;
-                        }
-                
-                        if (finalTranscript) {
-                            status.textContent = '✅ Enviando: ' + finalTranscript.trim();
-                            status.className = 'voice-status success';
-                            sendVoiceToDiscord(finalTranscript.trim());
-                        }
-                    };
-
-                    recognition.onerror = (event) => {
-                        const status = document.getElementById('voiceStatus');
-                        const btn = document.getElementById('btnMic');
-                
-                        if (event.error === 'no-speech') {
-                            status.textContent = '🤫 No se detectó voz, intenta de nuevo';
-                            status.className = 'voice-status error';
-                        } else if (event.error === 'audio-capture') {
-                            status.textContent = '🎤 Error: no se puede acceder al micrófono';
-                            status.className = 'voice-status error';
-                        } else if (event.error === 'not-allowed') {
-                            status.textContent = '🚫 Permiso de micrófono denegado';
-                            status.className = 'voice-status error';
-                            btn.disabled = true;
-                        } else {
-                            status.textContent = '❌ Error: ' + event.error;
-                            status.className = 'voice-status error';
-                        }
-                        console.error('Speech recognition error:', event.error);
-                    };
-
-                    recognition.onend = () => {
-                        isRecognizing = false;
-                        const btn = document.getElementById('btnMic');
-                        const status = document.getElementById('voiceStatus');
-                        btn.classList.remove('listening');
-                        btn.querySelector('.mic-text').textContent = 'Mantén para hablar';
-                
-                        if (!status.classList.contains('success') && !status.classList.contains('error')) {
-                            status.textContent = 'Listo para hablar';
-                            status.className = 'voice-status';
-                        }
-                    };
-
-                    return recognition;
-                }
-
-                function startListening(event) {
-                    if (event) event.preventDefault();
-                    if (!recognition) {
-                        if (!initSpeechRecognition()) return;
-                    }
-                    if (isRecognizing) return;
-
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.error('Error starting recognition:', e);
-                        const status = document.getElementById('voiceStatus');
-                        status.textContent = '❌ Error al iniciar: ' + e.message;
-                        status.className = 'voice-status error';
-                    }
-                }
-
-                function stopListening(event) {
-                    if (event) event.preventDefault();
-                    if (recognition && isRecognizing) {
-                        recognition.stop();
-                    }
-                }
-
-                async function sendVoiceToDiscord(text) {
-                    try {
-                        // Use relative URL to avoid CORS issues with localhost vs 127.0.0.1
-                        const response = await fetch('/api/voice', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ text: text })
-                        });
-                        
-                        const data = await response.json();
-                        const status = document.getElementById('voiceStatus');
-                        
-                        if (response.ok) {
-                            status.textContent = '✅ Enviado a Discord';
-                            status.className = 'voice-status success';
-                        } else {
-                            status.textContent = '❌ Error: ' + (data.error || 'unknown');
-                            status.className = 'voice-status error';
-                        }
-                    } catch (e) {
-                        console.error('Error sending to Discord:', e);
-                        const status = document.getElementById('voiceStatus');
-                        status.textContent = '❌ Error de conexión: ' + e.message;
-                        status.className = 'voice-status error';
-                    }
-                }
-                
-                // Generate invite link
-                async function generateInvite() {
-                    const btn = document.getElementById('btnInvite');
-                    const resultDiv = document.getElementById('invite-result');
-                    
-                    btn.disabled = true;
-                    btn.textContent = '⏳ Generando...';
-                    resultDiv.textContent = '';
-                    
-                    try {
-                        const response = await fetch('/api/invite');
-                        const data = await response.json();
-                        
-                        if (response.ok && data.invite_link) {
-                            resultDiv.innerHTML = `
-                                ✅ <b>Invite link generado:</b><br>
-                                <a href="${data.invite_link}" target="_blank">${data.invite_link}</a><br>
-                                <button onclick="navigator.clipboard.writeText('${data.invite_link}')">
-                                    📋 Copiar link
-                                </button>
-                            `;
-                            resultDiv.className = 'voice-status success';
-                        } else {
-                            resultDiv.textContent = '❌ Error: ' + (data.error || 'No se pudo generar el invite');
-                            resultDiv.className = 'voice-status error';
-                        }
-                    } catch (e) {
-                        resultDiv.textContent = '❌ Error de conexión: ' + e.message;
-                        resultDiv.className = 'voice-status error';
-                    } finally {
-                        btn.disabled = false;
-                        btn.textContent = '👥 Invitar amigos';
-                    }
-                }
-                
-                // Initialize on load
-                initSpeechRecognition();
-            </script>
+        // ─── Audio activation banner ───────────────────────────
+        document.getElementById('audioBanner').addEventListener('click', async () => {
+            // Initialize audio context on user click (required by browsers)
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') await audioContext.resume();
             
-            <!-- Invite friends button -->
-            <div class="invite-section" style="margin-top: 30px; text-align: center; padding: 20px;">
-                <button id="btnInvite" class="btn-primary" onclick="generateInvite()" 
-                        style="padding: 12px 24px; font-size: 1rem;">
-                    👥 Invitar amigos
-                </button>
-                <div id="invite-result" style="margin-top: 12px; font-size: 0.9rem;"></div>
-            </div>
-        </body>
+            // Hide banner
+            document.getElementById('audioBanner').style.display = 'none';
+            
+            log('🔊 Audio activado');
+            
+            // Connect WebSocket now
+            connect();
+        });
+        
+        // ─── Speech Recognition (Web Speech API) ──────────────────────────
+        let recognition = null;
+        let isRecognizing = false;
+        
+        function initSpeechRecognition() {
+            // Check for Web Speech API support
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                const btn = document.getElementById('btnMic');
+                const status = document.getElementById('voiceStatus');
+                btn.disabled = true;
+                btn.textContent = '🎤 No soportado en este navegador';
+                status.textContent = '⚠️ Speech Recognition no disponible (usa Chrome/Edge)';
+                status.className = 'voice-status error';
+                return null;
+            }
+            
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';  // English practice
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            recognition.onstart = () => {
+                isRecognizing = true;
+                const btn = document.getElementById('btnMic');
+                const status = document.getElementById('voiceStatus');
+                btn.classList.add('listening');
+                btn.querySelector('.mic-text').textContent = 'Escuchando...';
+                status.textContent = '🎙️ Escuchando... habla ahora';
+                status.className = 'voice-status listening';
+            };
+            
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                const status = document.getElementById('voiceStatus');
+                if (interimTranscript) {
+                    status.textContent = '🎙️ ' + interimTranscript;
+                }
+                
+                if (finalTranscript) {
+                    status.textContent = '✅ Enviando: ' + finalTranscript.trim();
+                    status.className = 'voice-status success';
+                    sendVoiceToDiscord(finalTranscript.trim());
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                const status = document.getElementById('voiceStatus');
+                const btn = document.getElementById('btnMic');
+                
+                if (event.error === 'no-speech') {
+                    status.textContent = '🤫 No se detectó voz, intenta de nuevo';
+                    status.className = 'voice-status error';
+                } else if (event.error === 'audio-capture') {
+                    status.textContent = '🎤 Error: no se puede acceder al micrófono';
+                    status.className = 'voice-status error';
+                } else if (event.error === 'not-allowed') {
+                    status.textContent = '🚫 Permiso de micrófono denegado';
+                    status.className = 'voice-status error';
+                    btn.disabled = true;
+                } else {
+                    status.textContent = '❌ Error: ' + event.error;
+                    status.className = 'voice-status error';
+                }
+                console.error('Speech recognition error:', event.error);
+            };
+            
+            recognition.onend = () => {
+                isRecognizing = false;
+                const btn = document.getElementById('btnMic');
+                const status = document.getElementById('voiceStatus');
+                btn.classList.remove('listening');
+                btn.querySelector('.mic-text').textContent = 'Mantén para hablar';
+                
+                if (!status.classList.contains('success') && !status.classList.contains('error')) {
+                    status.textContent = 'Listo para hablar';
+                    status.className = 'voice-status';
+                }
+            };
+            
+            return recognition;
+        }
+        
+        function startListening(event) {
+            if (event) event.preventDefault();
+            if (!recognition) {
+                if (!initSpeechRecognition()) return;
+            }
+            if (isRecognizing) return;
+            
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Error starting recognition:', e);
+                const status = document.getElementById('voiceStatus');
+                status.textContent = '❌ Error al iniciar: ' + e.message;
+                status.className = 'voice-status error';
+            }
+        }
+        
+        function stopListening(event) {
+            if (event) event.preventDefault();
+            if (recognition && isRecognizing) {
+                recognition.stop();
+            }
+        }
+        
+        async function sendVoiceToDiscord(text) {
+            try {
+                // Use relative URL to avoid CORS issues with localhost vs 127.0.0.1
+                const response = await fetch('/api/voice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                const status = document.getElementById('voiceStatus');
+                
+                if (response.ok) {
+                    status.textContent = '✅ Enviado a Discord';
+                    status.className = 'voice-status success';
+                } else {
+                    status.textContent = '❌ Error: ' + (data.error || 'unknown');
+                    status.className = 'voice-status error';
+                }
+            } catch (e) {
+                console.error('Error sending to Discord:', e);
+                const status = document.getElementById('voiceStatus');
+                status.textContent = '❌ Error de conexión: ' + e.message;
+                status.className = 'voice-status error';
+            }
+        }
+        
+        // Initialize on load
+        initSpeechRecognition();
+    </script>
+</body>
 </html>

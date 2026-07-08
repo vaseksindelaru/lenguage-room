@@ -869,24 +869,27 @@ async def on_message(message: discord.Message):
     """Handle messages — multi-user: any human can talk to bots."""
     global last_vaclav_activity  # keep variable name for compatibility
 
-    # Ignore other bots (except Vaclav's voice relay)
-    is_vaclav_voice = message.author.bot and message.content.startswith("🎤 **Vaclav (voice):**")
-    if message.author.bot and not is_vaclav_voice:
-        return  # ← No procesar comandos de otros bots
-
+    # ✅ FIX: Ignore ALL bot messages (including self)
+    if message.author.bot:
+        # Allow Vaclav's voice relay
+        if message.content.startswith("🎤 **Vaclav (voice):**"):
+            pass  # let it through
+        else:
+            return  # ignore all other bot messages
+    
     # Only respond in the designated channel
     if message.channel.id != CHANNEL_ID:
         return
-
+    
     # Handle commands (let discord.py process them ONCE)
     if message.content.startswith("!"):
         await bot.process_commands(message)
-        return  # ← IMPORTANTE: return aquí, NO llegar al final
-
+        return  # IMPORTANT: return here, don't reach the end
+    
     # MULTI-USER: any human (non-bot) can trigger bots
-    is_human = True  # message.author is not a bot (already filtered above)
+    is_human = True
     author_name = message.author.name  # real Discord name: Vaclav, Ronny, etc.
-
+    
     # Add to conversation history
     conversation_history.append({
         "author": author_name,
@@ -894,11 +897,11 @@ async def on_message(message: discord.Message):
         "timestamp": datetime.now().isoformat(),
         "is_human": is_human,
     })
-
+    
     # Update activity tracking (for any human)
     if is_human:
         last_vaclav_activity = datetime.now()  # reuse variable name
-
+        
         # Save state
         state = load_state()
         state["conversation_history"] = conversation_history[-MAX_HISTORY:]
@@ -906,26 +909,24 @@ async def on_message(message: discord.Message):
         state["paused"] = bots_paused
         state["topic_locked"] = topic_locked
         save_state(state)
-
+    
     # Trigger agent response for ANY human
     logger.info(f"📩 {author_name} said: {message.content}")
-
+    
     # Decide which agent responds
     agent_name = await decide_next_agent()
-
+    
     # Generate and send response
     text = await generate_agent_reply(conversation_history, agent_name, vaclav_recent=True)
     await asyncio.sleep(calculate_delay(text))
     await send_agent_message(message.channel, agent_name, text)
-
+    
     # Sam's follow-up (40% chance)
     if random.random() < 0.4:
         sam_delay = calculate_delay(text) + 1.0
         await asyncio.sleep(sam_delay)
         sam_text = await generate_agent_reply(conversation_history, "Sam", vaclav_recent=True)
         await send_agent_message(message.channel, "Sam", sam_text)
-
-    # ← NO poner bot.process_commands(message) aquí aiaba
 
 
 # ─── Commands ───────────────────────────────────────────────────────────────
@@ -1087,80 +1088,69 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
     await ctx.send(f"❌ Topic not found: `{subcommand}`. Use `!topic list` to see available topics.")
 
 
+# Global lock to prevent duplicate !speak executions
+speak_lock = asyncio.Lock()
+
 @bot.command(name="speak")
 async def cmd_speak(ctx):
     """Invite bots to continue the conversation."""
-    global topic_locked, bots_paused, conversation_history
-    logger.info(f"!speak from {ctx.author.name}")
-
-    if not agent_webhooks:
-        await setup_webhooks()
-
-    channel = bot.get_channel(CHANNEL_ID)
-    if not channel:
-        await ctx.send("❌ Channel not found.")
+    # ✅ FIX: Prevent duplicate execution
+    if speak_lock.locked():
+        logger.warning(f"!speak ignored: already running (from {ctx.author.name})")
         return
+    
+    async with speak_lock:
+        global topic_locked, bots_paused, conversation_history
+        logger.info(f"!speak from {ctx.author.name}")
 
-    # ✅ FIX: Only send "Inviting" message ONCE
-    topic = TOPICS[current_topic_index]
-    await ctx.send(f"💬 Inviting bots to speak about **{topic['theme']}**...")
+        if not agent_webhooks:
+            await setup_webhooks()
 
-    # Generate and send opening messages
-    openings = await generate_conversation_starter(topic)
-    if not openings:
-        openings = [
-            {"agent": "Alex", "text": f"Hey! Let's talk about {topic['theme']}. {topic['hook']}"},
-            {"agent": "Jordan", "text": "I'm in — this should be fun!"},
-        ]
+        channel = bot.get_channel(CHANNEL_ID)
+        if not channel:
+            await ctx.send("❌ Channel not found.")
+            return
 
-    # ✅ FIX: Send each opening ONLY ONCE
-    for opening in openings[:2]:
-        delay = calculate_delay(opening["text"])
-        await asyncio.sleep(delay)
-        await send_agent_message(channel, opening["agent"], opening["text"])
+        # Send "Inviting" message ONLY ONCE
+        topic = TOPICS[current_topic_index]
+        await ctx.send(f"💬 Inviting bots to speak about **{topic['theme']}**...")
+
+        # Generate opening messages
+        openings = await generate_conversation_starter(topic)
+        if not openings:
+            openings = [
+                {"agent": "Alex", "text": f"Hey! Let's talk about {topic['theme']}. {topic['hook']}"},
+                {"agent": "Jordan", "text": "I'm in — this should be fun!"},
+            ]
+
+        # Send opening messages ONLY ONCE
+        for opening in openings[:2]:
+            delay = calculate_delay(opening["text"])
+            await asyncio.sleep(delay)
+            await send_agent_message(channel, opening["agent"], opening["text"])
+            
+            # Add to history to avoid duplication
+            conversation_history.append({
+                "author": opening["agent"],
+                "content": opening["text"],
+                "timestamp": datetime.now().isoformat(),
+                "is_human": False,
+            })
+
+        # ✅ FIX: DO NOT touch conversation_loop here
+        # Let the loop run on its own schedule (every 25s)
+        # Just unlock the topic so the loop can proceed
+        topic_locked = False
+        bots_paused = False
         
-        # Add to history to avoid duplication
-        conversation_history.append({
-            "author": opening["agent"],
-            "content": opening["text"],
-            "timestamp": datetime.now().isoformat(),
-            "is_human": False,
-        })
+        # Save state
+        state = load_state()
+        state["topic_locked"] = False
+        state["paused"] = False
+        state["conversation_history"] = conversation_history[-MAX_HISTORY:]
+        save_state(state)
 
-    # ✅ FIX: Start conversation loop IMMEDIATELY
-    topic_locked = False
-    bots_paused = False
-    
-    # Force loop restart
-    if conversation_loop.is_running():
-        conversation_loop.cancel()
-    conversation_loop.start()
-    
-    # ✅ FIX: Wait 2 seconds before first agent response (avoid overlap)
-    await asyncio.sleep(2.0)
-    
-    # Send one immediate response
-    agent_name = await decide_next_agent()
-    text = await generate_agent_reply(conversation_history, agent_name)
-    await asyncio.sleep(calculate_delay(text))
-    await send_agent_message(channel, agent_name, text)
-    
-    # Add to history
-    conversation_history.append({
-        "author": agent_name,
-        "content": text,
-        "timestamp": datetime.now().isoformat(),
-        "is_human": False,
-    })
-
-    # Save state
-    state = load_state()
-    state["topic_locked"] = False
-    state["paused"] = False
-    state["conversation_history"] = conversation_history[-MAX_HISTORY:]
-    save_state(state)
-
-    await ctx.send("✅ Bots are speaking!")
+        await ctx.send("✅ Bots are speaking!")
 
 
 @bot.command(name="helpme")
