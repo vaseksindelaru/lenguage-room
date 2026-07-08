@@ -337,6 +337,27 @@
         // Auto-connect on load
         connect();
         
+        // ✅ FIX: Activate audio on first user interaction (required by browsers)
+        let audioActivated = false;
+        document.addEventListener('click', async () => {
+            if (!audioActivated) {
+                audioActivated = true;
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') await audioContext.resume();
+                log('🔊 Audio activated by user interaction');
+            }
+        }, { once: false });
+        
+        // Also activate on touch (mobile)
+        document.addEventListener('touchstart', async () => {
+            if (!audioActivated) {
+                audioActivated = true;
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') await audioContext.resume();
+                log('🔊 Audio activated by touch');
+            }
+        }, { once: false });
+        
         // Ping every 30s to keep alive
                 setInterval(() => {
                     if (ws && ws.readyState === WebSocket.OPEN) {
