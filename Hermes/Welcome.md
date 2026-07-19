@@ -16,11 +16,11 @@ created: "2026-07-17"
 
 ## 📋 Reglas de Convivencia
 
-### Hermes PUEDE:
-- ✅ Leer cualquier nota del vault para contexto
-- ✅ Crear notas en `Inbox/`, `Books/`, `Hermes/`, `Reports/`
-- ✅ Añadir secciones a notas existentes (con `patch`)
-- ✅ Buscar información en el vault con `search_files`
+### Hermes DEBE (regla de arranque, 2026-07-19):
+- ✅ En el PRIMER mensaje de cada sesión, leer `Hermes/Sessions/` (search_files o última nota) y retomar contexto
+- ✅ Si el usuario dice "inicie la sesion"/"retoma"/"continúa" → leer vault SIN que lo pidan explícitamente con ruta
+- ✅ Ante ambigüedad de arranque, leer el vault de todos modos (no fiarse solo de memoria interna)
+- ✅ Para CGAlpha: fuente de verdad = Obsidian, NO memoria interna (esta tiene datos desactualizados)
 
 ### Hermes NO DEBE:
 - ❌ Borrar notas sin preguntar
