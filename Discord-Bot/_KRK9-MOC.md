@@ -30,7 +30,7 @@ Cualquiera puede instalarlo vía Hermes.
 - Futuro: multi-usuario, botón GUI "Invite friends", integración con app Roger (repo PRIVADO)
 
 ## 🗂️ Sesiones
-- _(aún sin sesiones registradas aquí)_
+- [[2026-07-20-krk9-recopilacion-chats|2026-07-20 — Recopilación de chats de Hermes (contexto histórico)]]
 - Ver todas: buscar `path:Discord-Bot/Sessions`
 
 ## ⏭️ Pendientes
