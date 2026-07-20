@@ -45,6 +45,20 @@ Obsidian). Y aprender a pasar contenido de chats de Hermes a notas enlazadas.
 ## 📝 Regla aprendida (guardada en memoria interna)
 - Al "guardar sesión en Obsidian": capturar **SOLO ese chat concreto**, no
   recopilar todos los chats relacionados.
+- **Guardado AUTOMÁTICO** (decisión del usuario 2026-07-20): Hermes debe guardar
+  la sesión en Obsidian de forma proactiva al cerrar/cambiar de tema, SIN que el
+  usuario lo pida. Deduce el proyecto por el tema; si duda entre
+  CGAlpha/Discord-Bot/Hermes → PREGUNTA en cuál guardar.
+
+## ⚠️ Límite honesto del guardado automático (aclarado 2026-07-20)
+- Hermes solo actúa cuando recibe un mensaje. Si el usuario **cierra el chat de
+  golpe** sin escribir, o hay **corte de luz**, la nota NO se crea en ese momento.
+- PERO el chat NO se pierde: Hermes guarda todo en su DB interna (`state.db`),
+  recuperable con `session_search`. En la siguiente sesión se puede crear la nota
+  entonces. Es decir: se guarda tarde, pero no se pierde.
+- Para garantía inmediata, el usuario dice "guarda"/"cierro" antes de cerrar.
+- Idea pendiente (ofrecida, no implementada): cron nocturno que revise los chats
+  del día y auto-genere en Obsidian los que falten.
 
 ## ⏭️ Pendientes
 - [ ] Apuntar la app Obsidian al vault correcto (`~/Documents/Obsidian-Vault`)
