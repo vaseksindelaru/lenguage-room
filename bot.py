@@ -1112,7 +1112,8 @@ async def cmd_speak(ctx):
         # ✅ FIX: Tell on_message to ignore bot messages during this command
         ignore_bot_messages = True
         
-        logger.info(f"!speak from {ctx.author.name}")
+        logger.info(f"!speak START from {ctx.author.name}")
+        logger.info(f"  conversation_history length: {len(conversation_history)}")
 
         if not agent_webhooks:
             await setup_webhooks()
@@ -1125,7 +1126,9 @@ async def cmd_speak(ctx):
 
         # Send "Inviting" message ONLY ONCE
         topic = TOPICS[current_topic_index]
+        logger.info(f"  Sending: '💬 Inviting bots to speak about {topic['theme']}...'")
         await ctx.send(f"💬 Inviting bots to speak about **{topic['theme']}**...")
+        logger.info(f"  Sent 'Inviting' message")
 
         # Generate opening messages
         openings = await generate_conversation_starter(topic)
@@ -1135,11 +1138,15 @@ async def cmd_speak(ctx):
                 {"agent": "Jordan", "text": "I'm in — this should be fun!"},
             ]
 
+        logger.info(f"  Openings to send: {len(openings[:2])}")
+        
         # Send opening messages ONLY ONCE
-        for opening in openings[:2]:
+        for i, opening in enumerate(openings[:2]):
             delay = calculate_delay(opening["text"])
+            logger.info(f"  Opening {i+1}: {opening['agent']} - {opening['text'][:50]}...")
             await asyncio.sleep(delay)
             await send_agent_message(channel, opening["agent"], opening["text"])
+            logger.info(f"  Sent opening {i+1}")
             
             # Add to history to avoid duplication
             conversation_history.append({
@@ -1148,6 +1155,8 @@ async def cmd_speak(ctx):
                 "timestamp": datetime.now().isoformat(),
                 "is_human": False,
             })
+
+        logger.info(f"  conversation_history length after openings: {len(conversation_history)}")
 
         # ✅ FIX: DO NOT touch conversation_loop here
         topic_locked = False
@@ -1161,10 +1170,12 @@ async def cmd_speak(ctx):
         save_state(state)
 
         await ctx.send("✅ Bots are speaking!")
+        logger.info(f"!speak END - sent 'Bots are speaking!'")
         
         # ✅ FIX: Wait a moment, then allow on_message to process again
         await asyncio.sleep(2.0)
         ignore_bot_messages = False
+        logger.info(f"!speak DONE - ignore_bot_messages = False")
 
 
 @bot.command(name="helpme")
