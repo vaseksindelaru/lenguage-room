@@ -37,4 +37,7 @@ build/
 # Temporary
 /tmp/
 *.pid
-.pids/.env
+.pids/
+
+# Local user config (per-instance, like .env)
+personas.json

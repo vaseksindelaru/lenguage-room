@@ -359,18 +359,38 @@ async def _warmup_ollama():
         logger.warning(f"⚠️ Ollama warmup failed (will retry on first real request): {e}")
 
 
-async def call_openrouter(messages: list, system: str = "", temperature: float = 0.8) -> str:
+async def call_openrouter(messages: list, system: str = "", temperature: float = 0.8,
+                         provider_override: str = None, model_override: str = None) -> str:
     """
     Router con fallback automático: Cerebras → Groq → OpenRouter → Ollama local.
     Devuelve el texto generado o None si todo falla.
+
+    If provider_override is set, try that provider first (with model_override if given).
+    If it fails, fall back to the full router chain.
     """
     payload_messages = []
     if system:
         payload_messages.append({"role": "system", "content": system})
     payload_messages.extend(messages)
-    
+
+    # Build provider list: if override is set, try it first, then full chain
+    providers_to_try = list(LLM_CLIENTS)  # copy
+    if provider_override:
+        # Map provider_override name to LLM_CLIENTS entry
+        # provider names: "cerebras", "groq", "openrouter", "ollama" (or "ollama_local")
+        override_name = provider_override.replace("ollama", "ollama_local") if provider_override == "ollama" else provider_override
+        override_client = next((p for p in LLM_CLIENTS if p["name"] == override_name), None)
+        if override_client:
+            # Put override first; if model_override given, use it
+            override_entry = dict(override_client)  # shallow copy
+            if model_override:
+                override_entry["model"] = model_override
+            # Override first, then the rest of the chain (excluding duplicate)
+            providers_to_try = [override_entry] + [p for p in LLM_CLIENTS if p["name"] != override_name]
+            logger.info(f"🎯 LLM override: trying {provider_override}/{model_override or override_entry['model']} first")
+
     last_error = None
-    for provider in LLM_CLIENTS:
+    for provider in providers_to_try:
         try:
             if provider["type"] == "ollama_native":
                 # Use native Ollama endpoint
@@ -454,7 +474,14 @@ async def generate_tts(text: str, voice: str) -> Optional[bytes]:
 async def send_agent_message(channel: discord.TextChannel, agent_name: str, text: str):
     """Send a message via webhook to appear as the agent, with TTS audio streamed to browsers."""
     webhook = agent_webhooks.get(agent_name)
-    voice = AGENTS[agent_name].get("voice")
+
+    # Hot-reload voice from personas.json (falls back to AGENTS dict)
+    try:
+        from state_manager import load_personas
+        pdata = load_personas()["agents"].get(agent_name, {})
+        voice = pdata.get("voice") or AGENTS[agent_name].get("voice")
+    except Exception:
+        voice = AGENTS[agent_name].get("voice")
     
     # Generate TTS audio
     audio_data = None
@@ -566,7 +593,17 @@ async def generate_conversation_starter(topic: dict) -> List[Dict]:
 
 async def generate_agent_reply(conversation_context: list, agent_name: str, vaclav_recent: bool = False) -> str:
     """Generate a reply from a specific agent based on conversation context."""
-    persona = AGENT_PERSONAS[agent_name]
+    # Hot-reload persona & LLM config from personas.json
+    provider_override = None
+    model_override = None
+    try:
+        from state_manager import load_personas
+        pdata = load_personas()["agents"].get(agent_name, {})
+        persona = pdata.get("persona") or AGENT_PERSONAS[agent_name]
+        provider_override = pdata.get("llm_provider")  # None = use default router
+        model_override = pdata.get("llm_model")  # None = provider default
+    except Exception:
+        persona = AGENT_PERSONAS[agent_name]
 
     # Build conversation summary
     context_text = "\n".join(
@@ -609,7 +646,8 @@ Output ONLY your message text, nothing else."""
 
     messages = [{"role": "user", "content": prompt}]
 
-    response = await call_openrouter(messages, system=persona, temperature=0.85)
+    response = await call_openrouter(messages, system=persona, temperature=0.85,
+                                     provider_override=provider_override, model_override=model_override)
     if not response:
         fallbacks = {
             "Alex": "That's really interesting! What made you think of that?",

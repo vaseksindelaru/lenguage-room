@@ -7,6 +7,8 @@ import asyncio
 import json
 import base64
 import logging
+import tempfile
+import re
 from aiohttp import web
 import os
 import aiohttp
@@ -178,6 +180,176 @@ async def invite_handler(request):
         return web.json_response({"error": str(e)}, status=500)
 
 
+# ─── Personas API ──────────────────────────────────────────────────────────
+
+def _detect_llm_providers():
+    """Detect which LLM providers are available based on .env keys."""
+    providers = [
+        {"id": "router", "label": "Default router chain", "models": []},
+    ]
+
+    # Cerebras — check for real key (not placeholder)
+    cerebras_key = os.getenv("CEREBRAS_API_KEY", "")
+    if cerebras_key and len(cerebras_key) > 20 and not cerebras_key.startswith("tu_"):
+        providers.append({
+            "id": "cerebras", "label": "Cerebras API",
+            "models": ["gpt-oss-120b"],
+        })
+
+    # Groq — check for real key
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if groq_key and len(groq_key) > 20 and not groq_key.startswith("tu_") and "..." not in groq_key:
+        providers.append({
+            "id": "groq", "label": "Groq API",
+            "models": ["llama-3.1-8b-instant"],
+        })
+
+    # OpenRouter — check for real key
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+    if openrouter_key and len(openrouter_key) > 20 and not openrouter_key.startswith("tu_"):
+        providers.append({
+            "id": "openrouter", "label": "OpenRouter API",
+            "models": ["meta-llama/llama-3.3-70b-instruct:free"],
+        })
+
+    # Ollama — always available if OLLAMA_URL is set
+    ollama_url = os.getenv("OLLAMA_URL", "")
+    if ollama_url:
+        providers.append({
+            "id": "ollama", "label": "Local (Ollama)",
+            "models": ["qwen2.5:3b"],
+        })
+
+    return providers
+
+
+async def personas_get_handler(request):
+    """GET /api/personas — Return current personas + available LLM providers."""
+    from state_manager import load_personas, get_default_personas
+    try:
+        personas = load_personas()
+        defaults = get_default_personas()
+        providers = _detect_llm_providers()
+        return web.json_response({
+            "agents": personas.get("agents", {}),
+            "defaults": defaults.get("agents", {}),
+            "llm_providers": providers,
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+async def personas_post_handler(request):
+    """POST /api/personas — Update a single agent's config."""
+    from state_manager import load_personas, save_personas, VALID_AGENTS
+    try:
+        body = await request.json()
+        agent_name = body.get("agent")
+
+        if not agent_name or agent_name not in VALID_AGENTS:
+            return web.json_response(
+                {"error": f"Invalid agent: {agent_name}. Must be one of {sorted(VALID_AGENTS)}"},
+                status=400)
+
+        personas = load_personas()
+        agent_data = personas["agents"].setdefault(agent_name, {})
+
+        # Update only provided fields
+        for field in ("persona", "voice", "emoji", "llm_provider", "llm_model"):
+            if field in body:
+                agent_data[field] = body[field]
+
+        save_personas(personas)
+        return web.json_response({"status": "ok", "agent": agent_name})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+async def tts_preview_handler(request):
+    """POST /api/tts-preview — Generate TTS audio for voice preview.
+
+    Returns audio/mpeg binary. Does NOT touch Discord or broadcast to browsers.
+    Used exclusively by the 🎲 Preview button in the Settings modal.
+    """
+    try:
+        body = await request.json()
+        text = body.get("text", "").strip()
+        voice = body.get("voice", "en-US-GuyNeural").strip()
+
+        if not text:
+            return web.json_response({"error": "No text provided"}, status=400)
+
+        # Import edge_tts (same lib used by bot.py)
+        import edge_tts
+
+        # Clean text for TTS
+        clean_text = re.sub(r'[🟦🟩🟧🟪]', '', text).strip()
+        if not clean_text:
+            return web.json_response({"error": "Text is empty after cleaning"}, status=400)
+
+        communicate = edge_tts.Communicate(clean_text, voice)
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+
+        if not audio_data:
+            return web.json_response({"error": "TTS produced no audio"}, status=500)
+
+        return web.Response(
+            body=audio_data,
+            content_type="audio/mpeg",
+            headers={"Content-Disposition": "inline"},
+        )
+    except Exception as e:
+        logger.error(f"TTS preview error: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+
+async def session_export_handler(request):
+    """POST /api/session-export — Save session markdown to Obsidian (or fallback)."""
+    from pathlib import Path
+    try:
+        body = await request.json()
+        markdown = body.get("markdown", "")
+        filename = body.get("filename", "")
+
+        if not markdown or not filename:
+            return web.json_response({"error": "Missing markdown or filename"}, status=400)
+
+        # Sanitize filename
+        filename = filename.replace("/", "_").replace("\\", "_")
+        if not filename.endswith(".md"):
+            filename += ".md"
+
+        # Primary: Obsidian vault
+        obsidian_dir = Path.home() / "Documents" / "Obsidian-Vault" / "Discord-Bot" / "Sessions"
+        # Fallback: ./SESSIONS/ in the repo
+        fallback_dir = Path(__file__).parent / "SESSIONS"
+
+        if obsidian_dir.exists() or obsidian_dir.parent.exists():
+            target_dir = obsidian_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            target_dir = fallback_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+        target_path = target_dir / filename
+
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(markdown)
+
+        return web.json_response({
+            "status": "ok",
+            "path": str(target_path),
+            "is_obsidian": str(target_dir) == str(obsidian_dir),
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+# ─── Server Setup ──────────────────────────────────────────────────────────
+
 async def start_audio_server():
     """Start the aiohttp server."""
     app = web.Application()
@@ -209,13 +381,23 @@ async def start_audio_server():
     for route in list(app.router.routes()):
         cors.add(route)
     
-    # Add POST routes with CORS
+    # Add POST routes with CORS — existing
     audio_route = app.router.add_post('/api/audio', broadcast_audio_http)
     voice_route = app.router.add_post('/api/voice', voice_text_handler)
     invite_route = app.router.add_get('/api/invite', invite_handler)
     cors.add(audio_route)
     cors.add(voice_route)
     cors.add(invite_route)
+
+    # Add NEW routes — Personas API
+    personas_get_route = app.router.add_get('/api/personas', personas_get_handler)
+    personas_post_route = app.router.add_post('/api/personas', personas_post_handler)
+    tts_preview_route = app.router.add_post('/api/tts-preview', tts_preview_handler)
+    session_export_route = app.router.add_post('/api/session-export', session_export_handler)
+    cors.add(personas_get_route)
+    cors.add(personas_post_route)
+    cors.add(tts_preview_route)
+    cors.add(session_export_route)
     
     runner = web.AppRunner(app)
     await runner.setup()
@@ -225,6 +407,8 @@ async def start_audio_server():
     print("   WebSocket: ws://localhost:8081/ws")
     print("   HTTP API:  http://localhost:8081/api/audio")
     print("   Voice API: http://localhost:8081/api/voice")
+    print("   Personas:  http://localhost:8081/api/personas")
+    print("   TTS Prev:  http://localhost:8081/api/tts-preview")
     return runner
 
 

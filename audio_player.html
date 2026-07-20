@@ -140,6 +140,199 @@
         #audioBanner .icon { font-size: 4rem; }
         #audioBanner .title { font-size: 1.8rem; font-weight: 700; }
         #audioBanner .subtitle { font-size: 1rem; color: #aaa; max-width: 500px; line-height: 1.5; }
+
+        /* ─── Settings Button & Modal ──────────────────────────── */
+        #settingsBtn {
+            position: fixed; top: 18px; right: 18px; z-index: 1000;
+            width: 46px; height: 46px; border-radius: 50%;
+            background: #16213e; border: 1px solid #2a2a4a;
+            font-size: 1.4rem; cursor: pointer; color: #ccc;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+        #settingsBtn:hover {
+            background: #1e2a4a; border-color: #5865f2; color: #fff;
+            transform: rotate(45deg);
+            box-shadow: 0 4px 20px rgba(88,101,242,0.4);
+        }
+
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 5000;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center;
+            animation: modalFadeIn 0.2s ease;
+        }
+        .modal-overlay.open { display: flex; }
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal {
+            background: #16213e; border: 1px solid #2a2a4a; border-radius: 14px;
+            width: 94%; max-width: 640px; max-height: 90vh;
+            overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            animation: modalSlideUp 0.25s ease;
+        }
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px; border-bottom: 1px solid #2a2a4a;
+        }
+        .modal-header h2 { font-size: 1.2rem; color: #fff; }
+        .modal-close {
+            background: none; border: none; color: #888; font-size: 1.5rem;
+            cursor: pointer; padding: 4px 8px; border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .modal-close:hover { color: #fff; background: #2a2a4a; }
+
+        /* Tabs */
+        .modal-tabs {
+            display: flex; border-bottom: 1px solid #2a2a4a;
+            background: #111a30; overflow-x: auto;
+        }
+        .modal-tab {
+            flex: 1; padding: 12px 16px; text-align: center; cursor: pointer;
+            font-weight: 600; font-size: 0.9rem; color: #888;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s; white-space: nowrap; min-width: 80px;
+            background: none; border-top: none; border-left: none; border-right: none;
+        }
+        .modal-tab:hover { color: #ccc; background: #16213e; }
+        .modal-tab.active { color: #5865f2; border-bottom-color: #5865f2; background: #16213e; }
+
+        .modal-body { padding: 20px 24px; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Agent editor layout */
+        .agent-editor-top {
+            display: flex; gap: 18px; margin-bottom: 18px;
+            align-items: flex-start;
+        }
+        .emoji-display {
+            width: 72px; height: 72px; display: flex; align-items: center;
+            justify-content: center; font-size: 2.6rem; background: #111a30;
+            border: 1px solid #2a2a4a; border-radius: 12px; cursor: pointer;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .emoji-display:hover { border-color: #5865f2; background: #1a2240; }
+
+        .emoji-picker-popup {
+            display: none; position: absolute; z-index: 6000;
+            background: #111a30; border: 1px solid #2a2a4a; border-radius: 10px;
+            padding: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+            max-width: 280px;
+        }
+        .emoji-picker-popup.open { display: block; }
+        .emoji-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+        }
+        .emoji-option {
+            width: 36px; height: 36px; display: flex; align-items: center;
+            justify-content: center; font-size: 1.3rem; cursor: pointer;
+            border-radius: 6px; transition: background 0.1s;
+            background: none; border: none;
+        }
+        .emoji-option:hover { background: #2a2a4a; }
+        .emoji-option.selected { background: #3a3a6a; outline: 2px solid #5865f2; }
+
+        .persona-field { flex: 1; }
+        .persona-field label {
+            display: block; font-size: 0.8rem; color: #888;
+            margin-bottom: 6px; font-weight: 600;
+        }
+        .persona-textarea {
+            width: 100%; min-height: 130px; background: #0f0f1a;
+            border: 1px solid #2a2a4a; border-radius: 8px; padding: 10px;
+            color: #ddd; font-family: monospace; font-size: 0.8rem;
+            resize: vertical; transition: border-color 0.15s;
+        }
+        .persona-textarea:focus {
+            outline: none; border-color: #5865f2;
+        }
+
+        /* Selectors row */
+        .selector-row {
+            display: flex; gap: 10px; align-items: center;
+            margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .selector-row label {
+            font-size: 0.8rem; color: #888; font-weight: 600;
+            min-width: 50px;
+        }
+        .selector-row select,
+        .selector-row input[type="text"] {
+            flex: 1; min-width: 160px; padding: 8px 12px;
+            background: #0f0f1a; border: 1px solid #2a2a4a;
+            border-radius: 6px; color: #ddd; font-size: 0.85rem;
+            transition: border-color 0.15s;
+        }
+        .selector-row select:focus,
+        .selector-row input[type="text"]:focus {
+            outline: none; border-color: #5865f2;
+        }
+        .btn-preview {
+            padding: 8px 14px; background: #2a2a4a; color: #ccc;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.15s; white-space: nowrap;
+        }
+        .btn-preview:hover { background: #3a3a6a; color: #fff; }
+        .btn-preview:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Modal footer */
+        .modal-footer {
+            display: flex; gap: 10px; justify-content: flex-end;
+            padding: 16px 24px; border-top: 1px solid #2a2a4a;
+            flex-wrap: wrap;
+        }
+        .modal-footer .btn-reset {
+            margin-right: auto; /* push to left */
+            padding: 8px 16px; background: #2a2a4a; color: #ccc;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.15s;
+        }
+        .modal-footer .btn-reset:hover { background: #3a1e1e; color: #ed4245; }
+        .modal-footer .btn-cancel {
+            padding: 8px 20px; background: #2a2a4a; color: #ccc;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
+        }
+        .modal-footer .btn-cancel:hover { background: #3a3a5a; color: #fff; }
+        .modal-footer .btn-save {
+            padding: 8px 24px; background: #5865f2; color: #fff;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
+        }
+        .modal-footer .btn-save:hover { background: #4752c4; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: #1e3a5f; border: 1px solid #5865f2; color: #fff;
+            padding: 12px 24px; border-radius: 8px; font-size: 0.9rem;
+            z-index: 8000; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none; max-width: 90%; text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; }
+        .toast.error { background: #3a1e1e; border-color: #ed4245; }
+
+        /* Responsive */
+        @media (max-width: 520px) {
+            .agent-editor-top { flex-direction: column; align-items: stretch; }
+            .emoji-display { width: 100%; height: 56px; font-size: 2rem; }
+            .modal-tabs { gap: 0; }
+            .modal-tab { padding: 10px 8px; font-size: 0.8rem; }
+            .selector-row { flex-direction: column; }
+            .selector-row label { min-width: auto; }
+            .modal-footer { flex-direction: column-reverse; }
+            .modal-footer .btn-reset { margin-right: 0; }
+        }
     </style>
 </head>
 <body>
@@ -152,6 +345,9 @@
             Haz clic en cualquier parte de esta pantalla para continuar.
         </div>
     </div>
+
+    <!-- Settings button (floating) -->
+    <button id="settingsBtn" title="Settings" aria-label="Open settings">⚙️</button>
 
     <!-- Logo configurable -->
     <div id="logo-container" style="margin-bottom: 25px; text-align: center;">
@@ -172,29 +368,29 @@
 
     <div id="status" class="status connecting">🔄 Conectando...</div>
 
-    <div class="agents-grid">
+    <div class="agents-grid" id="agentsGrid">
         <div class="agent-card" id="card-Alex">
-            <div class="agent-emoji">🟦</div>
+            <div class="agent-emoji" id="emoji-Alex">🟦</div>
             <div class="agent-name">Alex</div>
-            <div class="agent-voice">en-US-GuyNeural</div>
+            <div class="agent-voice" id="voice-Alex">en-US-GuyNeural</div>
             <div class="speaking-indicator"></div>
         </div>
         <div class="agent-card" id="card-Maya">
-            <div class="agent-emoji">🟩</div>
+            <div class="agent-emoji" id="emoji-Maya">🟩</div>
             <div class="agent-name">Maya</div>
-            <div class="agent-voice">en-US-JennyNeural</div>
+            <div class="agent-voice" id="voice-Maya">en-US-JennyNeural</div>
             <div class="speaking-indicator"></div>
         </div>
         <div class="agent-card" id="card-Jordan">
-            <div class="agent-emoji">🟧</div>
+            <div class="agent-emoji" id="emoji-Jordan">🟧</div>
             <div class="agent-name">Jordan</div>
-            <div class="agent-voice">en-GB-RyanNeural</div>
+            <div class="agent-voice" id="voice-Jordan">en-GB-RyanNeural</div>
             <div class="speaking-indicator"></div>
         </div>
         <div class="agent-card" id="card-Sam">
-            <div class="agent-emoji">🟪</div>
+            <div class="agent-emoji" id="emoji-Sam">🟪</div>
             <div class="agent-name">Sam</div>
-            <div class="agent-voice">en-US-AriaNeural</div>
+            <div class="agent-voice" id="voice-Sam">en-US-AriaNeural</div>
             <div class="speaking-indicator"></div>
         </div>
     </div>
@@ -215,7 +411,41 @@
         <div id="voiceStatus" class="voice-status"></div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Settings Modal -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Agent Settings">
+            <div class="modal-header">
+                <h2>⚙️ Agent Settings</h2>
+                <button class="modal-close" id="modalCloseBtn" aria-label="Close settings">&times;</button>
+            </div>
+            <div class="modal-tabs" role="tablist" id="modalTabs">
+                <!-- Tabs generated by JS -->
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Tab panels generated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-reset" id="btnResetDefaults">↩ Reset to defaults</button>
+                <button class="btn-cancel" id="btnCancel">Cancel</button>
+                <button class="btn-save" id="btnSaveClose">💾 Save &amp; Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji picker popup (shared, repositioned per agent) -->
+    <div class="emoji-picker-popup" id="emojiPicker">
+        <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+
     <script>
+        // ════════════════════════════════════════════════════════════
+        // Core Audio Player (unchanged from original)
+        // ════════════════════════════════════════════════════════════
         let ws = null;
         let audioContext = null;
         const audioQueue = [];
@@ -298,6 +528,8 @@
             ws.onopen = () => {
                 setStatus('✅ Conectado — esperando audio', 'connected');
                 log('WebSocket conectado');
+                // Refresh agent cards from personas when connected
+                refreshAgentCards();
             };
             
             ws.onmessage = (event) => {
@@ -505,6 +737,508 @@
         
         // Initialize on load
         initSpeechRecognition();
+
+
+        // ════════════════════════════════════════════════════════════
+        // Settings Modal — Personality / Voice / LLM Editor
+        // ════════════════════════════════════════════════════════════
+
+        const AGENT_NAMES = ['Alex', 'Maya', 'Jordan', 'Sam'];
+        const AVAILABLE_VOICES = [
+            'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-AriaNeural',
+            'en-US-DavisNeural', 'en-US-JaneNeural', 'en-US-ChristopherNeural',
+            'en-US-TonyNeural', 'en-US-SaraNeural',
+            'en-GB-RyanNeural', 'en-GB-SoniaNeural', 'en-GB-LibbyNeural',
+            'en-GB-ThomasNeural',
+        ];
+        const EMOJI_OPTIONS = [
+            '🟦','🟩','🟧','🟪',
+            '😎','🤓','😇','🤠','🥸','🧐','😏','🫡',
+            '🤖','👻','🎭','🦊','🐱','🐺','🦁','🐯','🦄',
+            '🌟','🔥','💡','🎯','🚀','📚','🎨','🎼','🎷',
+        ];
+
+        let settingsData = {};        // current editable state (from /api/personas)
+        let settingsDefaults = {};     // default values (for Reset button)
+        let settingsBefore = {};       // snapshot at modal open (for diff)
+        let settingsProviders = [];    // available LLM providers
+        let sessionOpenTimestamp = '';  // ISO timestamp when modal opened
+        let activeTab = 'Alex';
+
+        // ─── Toast ─────────────────────────────────────
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => t.className = 'toast', 4000);
+        }
+
+        // ─── Refresh main page agent cards from /api/personas ───
+        async function refreshAgentCards() {
+            try {
+                const resp = await fetch('/api/personas');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                for (const name of AGENT_NAMES) {
+                    const agent = data.agents[name];
+                    if (!agent) continue;
+                    const emojiEl = document.getElementById('emoji-' + name);
+                    const voiceEl = document.getElementById('voice-' + name);
+                    if (emojiEl) emojiEl.textContent = agent.emoji || '';
+                    if (voiceEl) voiceEl.textContent = agent.voice || '';
+                }
+            } catch (e) { console.warn('Could not refresh agent cards:', e); }
+        }
+
+        // ─── Open Settings Modal ───────────────────────
+        async function openSettings() {
+            const modal = document.getElementById('settingsModal');
+            sessionOpenTimestamp = new Date().toISOString();
+
+            try {
+                const resp = await fetch('/api/personas');
+                if (!resp.ok) throw new Error('Failed to load personas');
+                const data = await resp.json();
+
+                settingsData = JSON.parse(JSON.stringify(data.agents || {}));
+                settingsDefaults = JSON.parse(JSON.stringify(data.defaults || {}));
+                settingsBefore = JSON.parse(JSON.stringify(data.agents || {}));
+                settingsProviders = data.llm_providers || [];
+
+            } catch (e) {
+                showToast('❌ Could not load settings: ' + e.message, true);
+                return;
+            }
+
+            buildTabs();
+            switchTab('Alex');
+            modal.classList.add('open');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('open');
+            closeEmojiPicker();
+        }
+
+        // ─── Build Tabs ────────────────────────────────
+        function buildTabs() {
+            const tabsEl = document.getElementById('modalTabs');
+            tabsEl.innerHTML = '';
+            for (const name of AGENT_NAMES) {
+                const tab = document.createElement('button');
+                tab.className = 'modal-tab';
+                tab.setAttribute('role', 'tab');
+                tab.setAttribute('aria-label', name + ' settings');
+                tab.dataset.agent = name;
+                const emoji = settingsData[name]?.emoji || '';
+                tab.textContent = emoji + ' ' + name;
+                tab.addEventListener('click', () => switchTab(name));
+                tabsEl.appendChild(tab);
+            }
+        }
+
+        function switchTab(name) {
+            activeTab = name;
+            // Highlight tab
+            document.querySelectorAll('.modal-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.agent === name);
+            });
+            // Render panel
+            renderPanel(name);
+        }
+
+        // ─── Render Agent Panel ────────────────────────
+        function renderPanel(name) {
+            const body = document.getElementById('modalBody');
+            const agent = settingsData[name] || {};
+
+            body.innerHTML = `
+                <div class="tab-panel active" id="panel-${name}">
+                    <div class="agent-editor-top">
+                        <div class="emoji-display" id="emojiDisplay-${name}" 
+                             title="Click to change emoji"
+                             tabindex="0"
+                             aria-label="Change emoji for ${name}">${agent.emoji || '❓'}</div>
+                        <div class="persona-field">
+                            <label for="persona-${name}">System Persona</label>
+                            <textarea class="persona-textarea" id="persona-${name}" rows="6"
+                                      aria-label="System persona for ${name}">${escapeHtml(agent.persona || '')}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="selector-row">
+                        <label for="voice-sel-${name}">Voice</label>
+                        <select id="voice-sel-${name}" aria-label="Voice for ${name}">
+                            ${AVAILABLE_VOICES.map(v =>
+                                `<option value="${v}" ${v === agent.voice ? 'selected' : ''}>${v}</option>`
+                            ).join('')}
+                        </select>
+                        <button class="btn-preview" id="btnPreview-${name}" 
+                                aria-label="Preview voice for ${name}">🎲 Preview</button>
+                    </div>
+
+                    <div class="selector-row">
+                        <label for="llm-sel-${name}">LLM</label>
+                        <select id="llm-sel-${name}" aria-label="LLM provider for ${name}">
+                            ${settingsProviders.map(p =>
+                                `<option value="${p.id}" ${
+                                    (agent.llm_provider === p.id) ||
+                                    (!agent.llm_provider && p.id === 'router') ? 'selected' : ''
+                                }>${p.label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+
+                    <div class="selector-row" id="modelRow-${name}" style="${(!agent.llm_provider || agent.llm_provider === 'router') ? 'display:none' : ''}">
+                        <label for="model-sel-${name}">Model</label>
+                        <select id="model-sel-${name}" aria-label="LLM model for ${name}">
+                            ${getModelsForProvider(agent.llm_provider).map(m =>
+                                `<option value="${m}" ${m === agent.llm_model ? 'selected' : ''}>${m}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listeners
+            document.getElementById(`emojiDisplay-${name}`).addEventListener('click', (e) => {
+                openEmojiPicker(name, e.currentTarget);
+            });
+
+            document.getElementById(`btnPreview-${name}`).addEventListener('click', () => {
+                previewVoice(name);
+            });
+
+            document.getElementById(`llm-sel-${name}`).addEventListener('change', (e) => {
+                const provider = e.target.value;
+                const modelRow = document.getElementById(`modelRow-${name}`);
+                const modelSel = document.getElementById(`model-sel-${name}`);
+                if (provider === 'router') {
+                    modelRow.style.display = 'none';
+                } else {
+                    modelRow.style.display = '';
+                    const models = getModelsForProvider(provider);
+                    modelSel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+                }
+            });
+
+            // Sync typing back to settingsData on change
+            const personaEl = document.getElementById(`persona-${name}`);
+            personaEl.addEventListener('input', () => {
+                settingsData[name].persona = personaEl.value;
+            });
+            document.getElementById(`voice-sel-${name}`).addEventListener('change', (e) => {
+                settingsData[name].voice = e.target.value;
+            });
+            document.getElementById(`llm-sel-${name}`).addEventListener('change', (e) => {
+                const val = e.target.value;
+                settingsData[name].llm_provider = val === 'router' ? null : val;
+                if (val === 'router') settingsData[name].llm_model = null;
+            });
+            document.getElementById(`model-sel-${name}`).addEventListener('change', (e) => {
+                settingsData[name].llm_model = e.target.value || null;
+            });
+        }
+
+        function getModelsForProvider(providerId) {
+            if (!providerId || providerId === 'router') return [];
+            const p = settingsProviders.find(pr => pr.id === providerId);
+            return p ? p.models : [];
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // ─── Emoji Picker ──────────────────────────────
+        function openEmojiPicker(agentName, anchorEl) {
+            const picker = document.getElementById('emojiPicker');
+            const grid = document.getElementById('emojiGrid');
+            const currentEmoji = settingsData[agentName]?.emoji || '';
+
+            grid.innerHTML = EMOJI_OPTIONS.map(em =>
+                `<button class="emoji-option ${em === currentEmoji ? 'selected' : ''}" 
+                         data-emoji="${em}" aria-label="${em}">${em}</button>`
+            ).join('');
+
+            // Position near the anchor
+            const rect = anchorEl.getBoundingClientRect();
+            picker.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+            picker.style.left = Math.max(8, rect.left + window.scrollX) + 'px';
+            picker.classList.add('open');
+
+            // Click handler
+            grid.onclick = (e) => {
+                const btn = e.target.closest('.emoji-option');
+                if (!btn) return;
+                const emoji = btn.dataset.emoji;
+                settingsData[agentName].emoji = emoji;
+                // Update display
+                const display = document.getElementById(`emojiDisplay-${agentName}`);
+                if (display) display.textContent = emoji;
+                // Update tab label
+                const tab = document.querySelector(`.modal-tab[data-agent="${agentName}"]`);
+                if (tab) tab.textContent = emoji + ' ' + agentName;
+                closeEmojiPicker();
+            };
+        }
+
+        function closeEmojiPicker() {
+            document.getElementById('emojiPicker').classList.remove('open');
+        }
+
+        // ─── Voice Preview (POST /api/tts-preview) ─────
+        async function previewVoice(agentName) {
+            const voiceSel = document.getElementById(`voice-sel-${agentName}`);
+            const previewBtn = document.getElementById(`btnPreview-${agentName}`);
+            if (!voiceSel || !previewBtn) return;
+
+            const voice = voiceSel.value;
+            const text = `Hello, I'm ${agentName} and this is how I sound!`;
+
+            previewBtn.disabled = true;
+            previewBtn.textContent = '⏳ Loading...';
+
+            try {
+                // ⚠️ POST /api/tts-preview — NOT /api/voice (that sends to Discord!)
+                const resp = await fetch('/api/tts-preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice }),
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(err.error || `HTTP ${resp.status}`);
+                }
+
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+                audio.onended = () => URL.revokeObjectURL(url);
+                log(`🎲 Previewing voice: ${voice} for ${agentName}`);
+
+            } catch (e) {
+                showToast('❌ Preview failed: ' + e.message, true);
+                console.error('TTS preview error:', e);
+            } finally {
+                previewBtn.disabled = false;
+                previewBtn.textContent = '🎲 Preview';
+            }
+        }
+
+        // ─── Reset to Defaults ─────────────────────────
+        function resetToDefaults() {
+            if (!confirm(`Reset ${activeTab} to default persona/voice/emoji/LLM?`)) return;
+            const def = settingsDefaults[activeTab];
+            if (!def) return;
+            settingsData[activeTab] = JSON.parse(JSON.stringify(def));
+            renderPanel(activeTab);
+            // Update tab emoji
+            const tab = document.querySelector(`.modal-tab[data-agent="${activeTab}"]`);
+            if (tab) tab.textContent = (def.emoji || '') + ' ' + activeTab;
+        }
+
+        // ─── Save & Close ──────────────────────────────
+        async function saveAndClose() {
+            const saveBtn = document.getElementById('btnSaveClose');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Saving...';
+
+            try {
+                // Sync current panel inputs before saving
+                syncCurrentPanel();
+
+                // POST each changed agent
+                const changes = [];
+                for (const name of AGENT_NAMES) {
+                    const before = settingsBefore[name] || {};
+                    const after = settingsData[name] || {};
+
+                    // Check if anything changed
+                    const fields = ['persona', 'voice', 'emoji', 'llm_provider', 'llm_model'];
+                    let anyChange = false;
+                    for (const f of fields) {
+                        if ((before[f] || null) !== (after[f] || null)) {
+                            anyChange = true;
+                            changes.push({
+                                agent: name, field: f,
+                                before: truncField(f, before[f]),
+                                after: truncField(f, after[f]),
+                            });
+                        }
+                    }
+
+                    if (anyChange) {
+                        const resp = await fetch('/api/personas', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                agent: name,
+                                persona: after.persona,
+                                voice: after.voice,
+                                emoji: after.emoji,
+                                llm_provider: after.llm_provider || null,
+                                llm_model: after.llm_model || null,
+                            }),
+                        });
+                        if (!resp.ok) {
+                            const err = await resp.json().catch(() => ({}));
+                            throw new Error(`Save ${name}: ${err.error || resp.status}`);
+                        }
+                    }
+                }
+
+                // Refresh agent cards on main page
+                await refreshAgentCards();
+
+                // Generate and export session markdown
+                let exportPath = '';
+                if (changes.length > 0) {
+                    exportPath = await exportSession(changes);
+                }
+
+                closeSettings();
+
+                if (changes.length > 0) {
+                    showToast(`✅ Saved! ${changes.length} change(s)` +
+                        (exportPath ? ` · Note: ${exportPath}` : ''));
+                } else {
+                    showToast('ℹ️ No changes detected');
+                }
+
+            } catch (e) {
+                showToast('❌ Save failed: ' + e.message, true);
+                console.error('Save error:', e);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save & Close';
+            }
+        }
+
+        function syncCurrentPanel() {
+            const name = activeTab;
+            const personaEl = document.getElementById(`persona-${name}`);
+            const voiceEl = document.getElementById(`voice-sel-${name}`);
+            const llmEl = document.getElementById(`llm-sel-${name}`);
+            const modelEl = document.getElementById(`model-sel-${name}`);
+            if (personaEl) settingsData[name].persona = personaEl.value;
+            if (voiceEl) settingsData[name].voice = voiceEl.value;
+            if (llmEl) {
+                const val = llmEl.value;
+                settingsData[name].llm_provider = val === 'router' ? null : val;
+            }
+            if (modelEl) settingsData[name].llm_model = modelEl.value || null;
+        }
+
+        function truncField(field, val) {
+            if (val === null || val === undefined) return 'null';
+            if (field === 'persona') {
+                const s = String(val);
+                return s.length > 60 ? s.substring(0, 57) + '...' : s;
+            }
+            return String(val);
+        }
+
+        // ─── Export Session Markdown to Obsidian ───────
+        async function exportSession(changes) {
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+            const filename = `${dateStr}-krk9-personality-edit.md`;
+
+            // Build changes table
+            let tableRows = '';
+            if (changes.length === 0) {
+                tableRows = '| — | — | Sin cambios | — |\n';
+            } else {
+                for (const c of changes) {
+                    const bef = c.before.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                    const aft = c.after.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                    tableRows += `| ${c.agent} | ${c.field} | ${bef} | ${aft} |\n`;
+                }
+            }
+
+            const markdown = `---
+type: hermes-session
+project: KRK-9
+date: "${dateStr}"
+tags:
+  - proyecto/krk9
+  - personality-edit
+title_original: "KRK-9 personality/voice/LLM edit (GUI)"
+---
+
+# KRK-9 — ${dateStr} · Edición de Personalidad y Configuración (GUI)
+
+> [!info] Auto-generado desde el panel ⚙️ Settings de la GUI.
+
+## 🛠️ Cambios aplicados
+| Agente | Campo | Antes | Después |
+|--------|-------|-------|---------|
+${tableRows}
+## 🧪 Pruebas
+- [x] POST /api/personas responde ok
+- [x] Preview de voz 🎲 funciona (audio en navegador, sin tocar Discord)
+- [ ] Validar en Discord con !speak (pendiente manual del usuario)
+
+## 🔗 Enlaces
+- [[_KRK9-MOC|Índice del proyecto KRK-9]]
+`;
+
+            try {
+                const resp = await fetch('/api/session-export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown, filename }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    console.warn('Session export failed:', err);
+                    return '';
+                }
+                const result = await resp.json();
+                return result.path || '';
+            } catch (e) {
+                console.warn('Session export error:', e);
+                return '';
+            }
+        }
+
+        // ─── Event Listeners ───────────────────────────
+        document.getElementById('settingsBtn').addEventListener('click', openSettings);
+        document.getElementById('modalCloseBtn').addEventListener('click', closeSettings);
+        document.getElementById('btnCancel').addEventListener('click', closeSettings);
+        document.getElementById('btnSaveClose').addEventListener('click', saveAndClose);
+        document.getElementById('btnResetDefaults').addEventListener('click', resetToDefaults);
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeEmojiPicker();
+                if (document.getElementById('settingsModal').classList.contains('open')) {
+                    closeSettings();
+                }
+            }
+        });
+
+        // Close modal on overlay click
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeSettings();
+        });
+
+        // Close emoji picker on outside click
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('emojiPicker');
+            if (picker.classList.contains('open') &&
+                !picker.contains(e.target) &&
+                !e.target.closest('.emoji-display')) {
+                closeEmojiPicker();
+            }
+        });
+
+        // On page load, refresh agent cards
+        refreshAgentCards();
     </script>
 </body>
 </html>
