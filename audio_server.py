@@ -15,6 +15,14 @@ import aiohttp
 from aiohttp import web
 import aiohttp_cors
 
+# Load .env so API keys (CEREBRAS_API_KEY, OPENROUTER_API_KEY, OLLAMA_URL, etc.)
+# are visible to the persona/LLM-provider detection in /api/personas.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Global: connected browser clients
 connected_clients = set()
 
