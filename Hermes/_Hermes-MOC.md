@@ -25,6 +25,7 @@ Obsidian como "segundo cerebro" compartido con Hermes.
 - Regla de arranque: Hermes lee `Hermes/Sessions/` al iniciar sesión.
 
 ## 🗂️ Sesiones
+- [[2026-07-20-organizacion-3-proyectos|2026-07-20 — Organización del vault en 3 proyectos]]
 - [[2026-07-19-obsidian-hermes|2026-07-19 — Instalación + flujo de trabajo]]
 - [[2026-07-19-bc-autoload|2026-07-19 (B+C) — Auto-lectura + limpieza de memoria]]
 
