@@ -449,26 +449,15 @@ def calculate_delay(previous_message: str, base_delay: float = 2.0) -> float:
 
 
 # ─── TTS (Edge TTS) ───────────────────────────────────────────────────────────
-async def generate_tts(text: str, voice: str) -> Optional[bytes]:
-    """Generate TTS audio using Edge TTS (free, no API key needed). Returns MP3 bytes."""
-    try:
-        # Clean text for TTS (remove parenthetical corrections, emojis, etc.)
-        clean_text = re.sub(r'\(Quick note:.*?\)', '', text)
-        clean_text = re.sub(r'[🟦🟩🟧🟪]', '', clean_text)
-        clean_text = clean_text.strip()
-        
-        if not clean_text:
-            return None
-            
-        communicate = edge_tts.Communicate(clean_text, voice)
-        audio_data = b""
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data += chunk["data"]
-        return audio_data
-    except Exception as e:
-        logger.error(f"TTS error for voice {voice}: {e}")
-        return None
+async def generate_tts(text: str, voice) -> Optional[bytes]:
+    """Generate TTS audio. Delegado a tts_providers para soportar Edge + ElevenLabs.
+    
+    voice: str (Edge name) o dict {"provider":"elevenlabs", "voice_id":"...", "model":"..."}
+    """
+    # Clean text (remove parenthetical corrections)
+    clean_text = re.sub(r'\(Quick note:.*?\)', '', text)
+    from tts_providers import generate_tts as _tts
+    return await _tts(clean_text, voice)
 
 
 async def send_agent_message(channel: discord.TextChannel, agent_name: str, text: str):
