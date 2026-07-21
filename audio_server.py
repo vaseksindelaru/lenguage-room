@@ -355,6 +355,166 @@ async def session_export_handler(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
+async def sessions_list_handler(request):
+    """GET /api/sessions?user_id=... — lista sesiones del user."""
+    user_id = request.query.get("user_id", "")
+    if not user_id:
+        return web.json_response({"error": "user_id required"}, status=400)
+    from state_manager import load_state, list_user_sessions
+    state = load_state()
+    sessions = list_user_sessions(state, user_id)
+    return web.json_response({"user_id": user_id, "sessions": sessions})
+
+async def sessions_create_handler(request):
+    """POST /api/sessions {user_id, topic?} — crea nueva sesión."""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "")
+        topic = body.get("topic", "Untitled")
+        if not user_id:
+            return web.json_response({"error": "user_id required"}, status=400)
+        from state_manager import load_state, save_state, create_user_session
+        state = load_state()
+        sess = create_user_session(state, user_id, topic)
+        save_state(state)
+        return web.json_response({"status": "ok", "session": sess})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+async def sessions_resume_handler(request):
+    """POST /api/sessions/resume {user_id, session_id} — marca activa."""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "")
+        session_id = body.get("session_id", "")
+        if not user_id or not session_id:
+            return web.json_response({"error": "user_id and session_id required"}, status=400)
+        from state_manager import load_state, save_state, set_active_session
+        state = load_state()
+        if set_active_session(state, user_id, session_id):
+            save_state(state)
+            return web.json_response({"status": "ok", "active_session": session_id})
+        return web.json_response({"error": f"Session {session_id} not found"}, status=404)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+async def session_save_obsidian_handler(request):
+    """POST /api/session/save-obsidian {user_id, session_id} — exporta sesión a Obsidian."""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "")
+        session_id = body.get("session_id", "")
+        if not user_id or not session_id:
+            return web.json_response({"error": "user_id and session_id required"}, status=400)
+        
+        from state_manager import load_state
+        from pathlib import Path
+        from datetime import datetime
+        state = load_state()
+        user = state.get("users", {}).get(user_id, {})
+        session = next((s for s in user.get("sessions", []) if s.get("id") == session_id), None)
+        if not session:
+            return web.json_response({"error": f"Session {session_id} not found for user {user_id}"}, status=404)
+        
+        # Construir markdown
+        today = datetime.now().strftime("%Y-%m-%d")
+        messages = session.get("messages", [])
+        duration_min = max(1, len(messages) * 2)  # estimación
+        vocab = user.get("casete_vocab", {}).get("known", [])
+        
+        md_lines = [
+            "---",
+            "type: krk9-session",
+            "project: KRK-9",
+            f"date: \"{today}\"",
+            f"topic: \"{session.get('topic','Untitled')}\"",
+            f"user: \"{user.get('name', user_id)}\"",
+            f"session_id: \"{session_id}\"",
+            f"messages: {len(messages)}",
+            f"duration_min: {duration_min}",
+            "tags: [proyecto/krk9, conversation]",
+            "---",
+            "",
+            f"# KRK-9 — {today} · Sesión: {session.get('topic','Untitled')}",
+            "",
+            "## 📊 Resumen",
+            f"- Participantes: {', '.join(set(m.get('author','?') for m in messages)) or '?'}",
+            f"- Palabras aprendidas por Casete: {', '.join(vocab[:10]) or '(ninguna)'}",
+            f"- Mensajes totales: {len(messages)}",
+            "",
+            "## 💬 Transcripción",
+        ]
+        for m in messages[:200]:  # cap a 200 msgs para no inflar el .md
+            author = m.get("author", m.get("agent", "?"))
+            content = m.get("content", "").replace("\n", " ")
+            ts = m.get("ts", m.get("timestamp", ""))
+            time_short = ts[11:16] if len(ts) > 16 else ""
+            md_lines.append(f"**{author}** ({time_short}): {content}")
+        
+        if len(messages) > 200:
+            md_lines.append(f"\n... ({len(messages) - 200} mensajes más)")
+        
+        md_lines.extend([
+            "",
+            "## 🔗 Enlaces",
+            "- [[_KRK9-MOC|Índice KRK-9]]",
+            "- [[2026-07-20-krk9-personality-editor-gui|Sesión previa]]",
+            "",
+        ])
+        markdown = "\n".join(md_lines)
+        
+        # Escribir a Obsidian
+        obsidian_dir = Path.home() / "Documents" / "Obsidian-Vault" / "Discord-Bot" / "Sessions"
+        fallback_dir = Path(__file__).parent / "SESSIONS"
+        if obsidian_dir.exists() or obsidian_dir.parent.exists():
+            target_dir = obsidian_dir
+        else:
+            target_dir = fallback_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        filename = f"{today}-krk9-session-{session_id}.md"
+        target_path = target_dir / filename
+        
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(markdown)
+        
+        return web.json_response({
+            "status": "ok",
+            "path": str(target_path),
+            "is_obsidian": str(target_dir) == str(obsidian_dir),
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+async def topics_list_handler(request):
+    """GET /api/topics?user_id=... — TOPICS base + sugerencias cacheadas del user."""
+    user_id = request.query.get("user_id", "")
+    from state_manager import load_state
+    state = load_state()
+    from bot import TOPICS
+    suggestions = []
+    if user_id:
+        suggestions = state.get("users", {}).get(user_id, {}).get("last_topic_suggestions", {}).get("topics", [])
+    return web.json_response({
+        "topics_base": TOPICS,
+        "suggestions": suggestions,
+    })
+
+async def topic_set_handler(request):
+    """POST /api/topic {user_id, topic} — fija tema custom."""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "")
+        topic = body.get("topic", "")
+        if not user_id or not topic:
+            return web.json_response({"error": "user_id and topic required"}, status=400)
+        from state_manager import load_state, save_state
+        state = load_state()
+        state["custom_topic"] = {"theme": topic, "hook": f"Let's talk about {topic}!"}
+        save_state(state)
+        return web.json_response({"status": "ok", "topic": topic})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
 
 # ─── Server Setup ──────────────────────────────────────────────────────────
 
@@ -406,6 +566,21 @@ async def start_audio_server():
     cors.add(personas_post_route)
     cors.add(tts_preview_route)
     cors.add(session_export_route)
+    
+    # NEW ROUTES F10:
+    s_list_route = app.router.add_get('/api/sessions', sessions_list_handler)
+    s_create_route = app.router.add_post('/api/sessions', sessions_create_handler)
+    s_res_route = app.router.add_post('/api/sessions/resume', sessions_resume_handler)
+    s_save_route = app.router.add_post('/api/session/save-obsidian', session_save_obsidian_handler)
+    t_list_route = app.router.add_get('/api/topics', topics_list_handler)
+    t_set_route = app.router.add_post('/api/topic', topic_set_handler)
+    
+    cors.add(s_list_route)
+    cors.add(s_create_route)
+    cors.add(s_res_route)
+    cors.add(s_save_route)
+    cors.add(t_list_route)
+    cors.add(t_set_route)
     
     runner = web.AppRunner(app)
     await runner.setup()
