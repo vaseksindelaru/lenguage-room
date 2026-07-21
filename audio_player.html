@@ -14,18 +14,20 @@
         }
         h1 { margin-bottom: 20px; font-size: 2rem; color: #fff; text-shadow: 0 0 10px rgba(88,101,242,0.4); font-weight: 700; }
         .status {
-            padding: 12px 24px; border-radius: 8px; margin-bottom: 20px;
-            font-weight: 600; text-align: center; min-width: 280px;
+            padding: 8px 16px; border-radius: 6px; margin-bottom: 20px;
+            font-weight: 500; font-size: 0.85rem; text-align: center; min-width: 200px;
         }
         .status.connected { background: #1e3a5f; border: 1px solid #5865f2; color: #5865f2; }
         .status.connecting { background: #3a2e1e; border: 1px solid #fee75c; color: #fee75c; }
         .status.disconnected { background: #3a1e1e; border: 1px solid #ed4245; color: #ed4245; }
         
         .agents-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px; width: 100%; max-width: 600px; margin-bottom: 20px;
+            display: flex; flex-wrap: nowrap; justify-content: center;
+            gap: 12px; width: 100%; max-width: 900px; margin-bottom: 20px;
+            overflow-x: auto; padding-bottom: 8px; /* For scrollbar */
         }
         .agent-card {
+            flex: 1; min-width: 110px; max-width: 160px;
             background: rgba(22, 33, 62, 0.7); backdrop-filter: blur(8px);
             border: 1px solid #2a2a4a; border-radius: 12px;
             padding: 16px; text-align: center; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -350,7 +352,9 @@
         .toast.error { background: #3a1e1e; border-color: #ed4245; }
 
         /* Responsive */
-        @media (max-width: 520px) {
+        @media (max-width: 600px) {
+            .agents-grid { justify-content: flex-start; }
+            .participants-panel { flex-direction: column; text-align: center; }
             .agent-editor-top { flex-direction: column; align-items: stretch; }
             .emoji-display { width: 100%; height: 56px; font-size: 2rem; }
             .modal-tabs { gap: 0; }
@@ -394,23 +398,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Logo configurable -->
-    <div id="logo-container" style="margin-bottom: 25px; text-align: center;">
-        <img id="logo" src="/static/logo.png?t=202407090200" alt="KRK-9 Logo" 
-             style="max-width: 300px; max-height: 200px; display: none; object-fit: contain;"> 
-        <h1 id="logo-text" style="display: none; font-size: 2.5rem; color: #5865f2; margin-bottom: 20px; font-weight: bold;">KRK-9</h1>
-    </div>
-    
-    <script>
-        // Try to load logo, show text fallback if fails
-        const logoImg = document.getElementById('logo');
-        logoImg.onload = function() { this.style.display = 'block'; };
-        logoImg.onerror = function() { 
-            this.style.display = 'none'; 
-            document.getElementById('logo-text').style.display = 'block'; 
-        };
-    </script>
 
     <div id="status" class="status connecting">🔄 Conectando...</div>
 
