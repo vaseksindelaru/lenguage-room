@@ -812,25 +812,37 @@ Output your message text ONLY."""
 
 async def decide_next_agent() -> str:
     """Decide which agent speaks next based on conversation state."""
+    from state_manager import load_state
     recent_agents = [msg["agent"] for msg in conversation_history[-4:] if "agent" in msg]
     vaclav_recent = any(msg.get("author") == "Vaclav" for msg in conversation_history[-3:])
 
+    # Load active agents
+    state = load_state()
+    active = state.get("active_agents", ["Alex", "Maya", "Jordan", "Sam"])
+    if set(active).intersection(["Alex", "Maya", "Jordan", "Sam"]) == set():
+        active = ["Alex"] # Fallback if none chosen
+
     # Sam should speak more if Vaclav participated or hasn't spoken
     weights = {"Alex": 25, "Maya": 20, "Jordan": 25, "Sam": 30}
+    
+    for k in list(weights.keys()):
+        if k not in active:
+            del weights[k]
 
     # Boost Sam if Vacvac spoke (to correct) or didn't (to invite)
-    if vaclav_recent:
-        weights["Sam"] += 30  # Vaclav spoke → Sam can correct + respond
-    else:
-        # boost Sam if too many agent-only messages
-        recent_non_vaclav = [m for m in conversation_history[-5:] if m.get("author") != "Vaclav"]
-        if len(recent_non_vaclav) >= 3:
-            weights["Sam"] += 20
+    if "Sam" in weights:
+        if vaclav_recent:
+            weights["Sam"] += 30  # Vaclav spoke → Sam can correct + respond
+        else:
+            # boost Sam if too many agent-only messages
+            recent_non_vaclav = [m for m in conversation_history[-5:] if m.get("author") != "Vaclav"]
+            if len(recent_non_vaclav) >= 3:
+                weights["Sam"] += 20
 
     # Avoid same agent twice in a row
     if recent_agents:
         last = recent_agents[-1]
-        if last in weights:   # ← solo agentes en el weighted random (excluye Casete)
+        if last in weights and len(weights) > 1:
             weights[last] = 0
 
     agents = list(weights.keys())
@@ -889,6 +901,12 @@ async def on_casete_help(channel, user_id: str, target_word: str) -> None:
 
 async def maybe_invoke_casete(message) -> bool:
     """Evalúa triggers en on_message. Devuelve True si Casete respondió (y hay que parar)."""
+    from state_manager import load_state
+    state = load_state()
+    active = state.get("active_agents", ["Alex", "Maya", "Jordan", "Sam", "Casete"])
+    if "Casete" not in active:
+        return False
+        
     if _CASETE_TRIGGERS_RE.search(message.content):
         word = extract_target_word(message.content)
         if word:
@@ -1476,6 +1494,11 @@ async def cmd_speak(ctx):
 @bot.command(name="casete")
 async def cmd_casete(ctx, *, word: str = ""):
     """Pide a Casete que sople una palabra. !casete <word>"""
+    from state_manager import load_state
+    state = load_state()
+    active = state.get("active_agents", ["Alex", "Maya", "Jordan", "Sam", "Casete"])
+    if "Casete" not in active:
+        return
     await on_casete_help(ctx.channel, str(ctx.author.id), word)
 
 

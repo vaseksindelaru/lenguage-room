@@ -238,10 +238,19 @@ async def personas_get_handler(request):
         personas = load_personas()
         defaults = get_default_personas()
         providers = _detect_llm_providers()
+        
+        elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "")
+        elevenlabs_available = bool(elevenlabs_key) and not elevenlabs_key.startswith("your_") and len(elevenlabs_key) > 20
+        from tts_providers import EDGE_VOICES
+
         return web.json_response({
             "agents": personas.get("agents", {}),
             "defaults": defaults.get("agents", {}),
             "llm_providers": providers,
+            "voice_providers": [
+                {"id":"edge","label":"Edge TTS (humano)","available":True,"voices":EDGE_VOICES},
+                {"id":"elevenlabs","label":"ElevenLabs (personaje)","available":elevenlabs_available,"voices":[]},
+            ],
         })
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
@@ -282,24 +291,20 @@ async def tts_preview_handler(request):
     try:
         body = await request.json()
         text = body.get("text", "").strip()
-        voice = body.get("voice", "en-US-GuyNeural").strip()
+        voice = body.get("voice", "en-US-GuyNeural")
 
         if not text:
             return web.json_response({"error": "No text provided"}, status=400)
 
-        # Import edge_tts (same lib used by bot.py)
-        import edge_tts
-
         # Clean text for TTS
-        clean_text = re.sub(r'[🟦🟩🟧🟪]', '', text).strip()
+        clean_text = re.sub(r'[🟦🟩🟧🟪🦜]', '', text).strip()
         if not clean_text:
             return web.json_response({"error": "Text is empty after cleaning"}, status=400)
 
-        communicate = edge_tts.Communicate(clean_text, voice)
-        audio_data = b""
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data += chunk["data"]
+        from tts_providers import generate_tts
+        audio_data = await generate_tts(clean_text, voice)
+        if not audio_data:
+            return web.json_response({"error": "TTS failed (both providers)"}, status=500)
 
         if not audio_data:
             return web.json_response({"error": "TTS produced no audio"}, status=500)
@@ -516,8 +521,56 @@ async def topic_set_handler(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
-# ─── Server Setup ──────────────────────────────────────────────────────────
+async def preferences_handler(request):
+    """GET /api/preferences?user_id=... | POST {user_id, interests: [...]}"""
+    from state_manager import load_state, save_state
+    if request.method == "GET":
+        user_id = request.query.get("user_id", "")
+        if not user_id:
+            return web.json_response({"error": "user_id required"}, status=400)
+        state = load_state()
+        interests = state.get("users", {}).get(user_id, {}).get("interests", [])
+        return web.json_response({"user_id": user_id, "interests": interests})
+    else:  # POST
+        try:
+            body = await request.json()
+            user_id = body.get("user_id", "")
+            interests = body.get("interests", [])
+            if not user_id or not isinstance(interests, list):
+                return web.json_response({"error": "user_id and interests list required"}, status=400)
+            state = load_state()
+            state.setdefault("users", {}).setdefault(user_id, {"name":"Unknown","interests":[],"casete_vocab":{},"sessions":[],"active_session":None})
+            state["users"][user_id]["interests"] = [str(i).lower().strip() for i in interests if i]
+            # Invalidar cache de sugerencias
+            if "last_topic_suggestions" in state["users"][user_id]:
+                del state["users"][user_id]["last_topic_suggestions"]
+            save_state(state)
+            return web.json_response({"status": "ok", "interests": state["users"][user_id]["interests"]})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
 
+async def active_agents_get_handler(request):
+    from state_manager import load_state
+    state = load_state()
+    active = state.get("active_agents", ["Alex", "Maya", "Jordan", "Sam", "Casete"])
+    return web.json_response({"active_agents": active})
+
+
+async def active_agents_post_handler(request):
+    from state_manager import load_state, save_state
+    try:
+        body = await request.json()
+        active = body.get("active_agents")
+        if not isinstance(active, list):
+            return web.json_response({"error": "active_agents must be a list"}, status=400)
+        state = load_state()
+        state["active_agents"] = [a for a in active if a in ["Alex", "Maya", "Jordan", "Sam", "Casete"]]
+        save_state(state)
+        return web.json_response({"status": "ok", "active_agents": state["active_agents"]})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+# ─── Server Setup ──────────────────────────────────────────────────────────
 async def start_audio_server():
     """Start the aiohttp server."""
     app = web.Application()
@@ -574,6 +627,10 @@ async def start_audio_server():
     s_save_route = app.router.add_post('/api/session/save-obsidian', session_save_obsidian_handler)
     t_list_route = app.router.add_get('/api/topics', topics_list_handler)
     t_set_route = app.router.add_post('/api/topic', topic_set_handler)
+    p_get_route = app.router.add_get('/api/preferences', preferences_handler)
+    p_post_route = app.router.add_post('/api/preferences', preferences_handler)
+    a_get_route = app.router.add_get('/api/active-agents', active_agents_get_handler)
+    a_post_route = app.router.add_post('/api/active-agents', active_agents_post_handler)
     
     cors.add(s_list_route)
     cors.add(s_create_route)
@@ -581,6 +638,10 @@ async def start_audio_server():
     cors.add(s_save_route)
     cors.add(t_list_route)
     cors.add(t_set_route)
+    cors.add(p_get_route)
+    cors.add(p_post_route)
+    cors.add(a_get_route)
+    cors.add(a_post_route)
     
     runner = web.AppRunner(app)
     await runner.setup()

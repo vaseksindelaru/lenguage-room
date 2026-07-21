@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎧 KRK-9 Audio Player</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e; color: #eee; min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #12122b, #1a1a2e); color: #eee; min-height: 100vh;
             display: flex; flex-direction: column; align-items: center; padding: 20px;
         }
-        h1 { margin-bottom: 20px; font-size: 1.8rem; color: #5865f2; }
+        h1 { margin-bottom: 20px; font-size: 2rem; color: #fff; text-shadow: 0 0 10px rgba(88,101,242,0.4); font-weight: 700; }
         .status {
             padding: 12px 24px; border-radius: 8px; margin-bottom: 20px;
             font-weight: 600; text-align: center; min-width: 280px;
@@ -21,19 +22,45 @@
         .status.disconnected { background: #3a1e1e; border: 1px solid #ed4245; color: #ed4245; }
         
         .agents-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 12px; width: 100%; max-width: 600px; margin-bottom: 20px;
         }
         .agent-card {
-            background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
-            padding: 16px; text-align: center; transition: all 0.2s;
+            background: rgba(22, 33, 62, 0.7); backdrop-filter: blur(8px);
+            border: 1px solid #2a2a4a; border-radius: 12px;
+            padding: 16px; text-align: center; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative; overflow: hidden;
         }
-        .agent-card.active { border-color: #5865f2; box-shadow: 0 0 15px rgba(88, 101, 242, 0.3); }
-        .agent-emoji { font-size: 2rem; margin-bottom: 8px; }
-        .agent-name { font-weight: 600; color: #fff; }
+        .agent-card.inactive {
+            opacity: 0.35; filter: grayscale(100%);
+            box-shadow: none; border-color: rgba(42, 42, 74, 0.3);
+        }
+        .agent-card.active { border-color: #5865f2; box-shadow: 0 8px 24px rgba(88, 101, 242, 0.25); transform: translateY(-3px); }
+        .agent-emoji { font-size: 2.2rem; margin-bottom: 8px; }
+        .agent-name { font-weight: 600; color: #fff; font-size: 1.05rem; }
         .agent-voice { font-size: 0.75rem; color: #888; margin-top: 4px; }
-        .speaking-indicator { height: 4px; background: #5865f2; border-radius: 2px; margin-top: 8px; transform: scaleX(0); transition: transform 0.1s; }
+        .speaking-indicator { height: 4px; background: #5865f2; border-radius: 2px; margin-top: 8px; transform: scaleX(0); transition: transform 0.15s ease-out; }
         .agent-card.active .speaking-indicator { transform: scaleX(1); }
+        
+        .participants-panel {
+            background: rgba(17, 26, 48, 0.6); backdrop-filter: blur(10px);
+            border: 1px solid rgba(88,101,242,0.2); border-radius: 12px;
+            padding: 12px 20px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; gap: 16px;
+            width: 100%; max-width: 600px;
+        }
+        .participants-panel h3 { font-size: 0.9rem; color: #aaa; font-weight: 500; }
+        .bot-checkboxes { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-participant {
+            background: rgba(0,0,0,0.3); border: 1px solid #2a2a4a;
+            color: #888; padding: 6px 14px; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-participant:hover { background: rgba(0,0,0,0.5); color: #ccc; }
+        .btn-participant.selected {
+            background: rgba(88,101,242,0.15); border-color: #5865f2; color: #fff;
+        }
         
         .log { 
             width: 100%; max-width: 700px; height: 200px; 
@@ -386,6 +413,13 @@
     </script>
 
     <div id="status" class="status connecting">🔄 Conectando...</div>
+
+    <div class="participants-panel">
+        <h3>Participants:</h3>
+        <div class="bot-checkboxes" id="participantsList">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
 
     <div class="agents-grid" id="agentsGrid">
         <div class="agent-card" id="card-Alex">
@@ -1360,6 +1394,60 @@ ${tableRows}
             } catch (e) { console.warn("Failed to load topics", e); }
         }
 
+        // ─── Active Agents Selection ──────────
+        let activeAgents = ['Alex', 'Maya', 'Jordan', 'Sam', 'Casete'];
+
+        async function loadActiveAgents() {
+            try {
+                const resp = await fetch('/api/active-agents');
+                const data = await resp.json();
+                if (data.active_agents) {
+                    activeAgents = data.active_agents;
+                }
+                renderParticipants();
+                updateCardsOpacity();
+            } catch (e) { console.warn("Failed to load active agents", e); }
+        }
+
+        function renderParticipants() {
+            const list = document.getElementById('participantsList');
+            if (!list) return;
+            const allAgents = ['Alex', 'Maya', 'Jordan', 'Sam', 'Casete'];
+            list.innerHTML = allAgents.map(a => {
+                const isSelected = activeAgents.includes(a);
+                return `<button class="btn-participant ${isSelected ? 'selected' : ''}" onclick="toggleParticipant('${a}')">${isSelected ? '☑' : '☐'} ${a}</button>`;
+            }).join('');
+        }
+
+        async function toggleParticipant(name) {
+            if (activeAgents.includes(name)) {
+                activeAgents = activeAgents.filter(a => a !== name);
+            } else {
+                activeAgents.push(name);
+            }
+            renderParticipants();
+            updateCardsOpacity();
+            
+            try {
+                await fetch('/api/active-agents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active_agents: activeAgents })
+                });
+            } catch (e) { showToast("Failed to save participants", true); }
+        }
+        
+        function updateCardsOpacity() {
+            const allAgents = ['Alex', 'Maya', 'Jordan', 'Sam', 'Casete'];
+            allAgents.forEach(a => {
+                const card = document.getElementById('card-' + a);
+                if (card) {
+                    if (activeAgents.includes(a)) card.classList.remove('inactive');
+                    else card.classList.add('inactive');
+                }
+            });
+        }
+
         document.getElementById('modalCloseBtn').addEventListener('click', closeSettings);
         document.getElementById('btnCancel').addEventListener('click', closeSettings);
         document.getElementById('btnSaveClose').addEventListener('click', saveAndClose);
@@ -1392,6 +1480,7 @@ ${tableRows}
 
         // On page load, refresh agent cards
         refreshAgentCards();
+        loadActiveAgents();
     </script>
 </body>
 </html>
