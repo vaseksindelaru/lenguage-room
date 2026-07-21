@@ -862,7 +862,7 @@ async def on_casete_help(channel, user_id: str, target_word: str) -> None:
         return
     
     state = load_state()
-    user_vocab = state.get("casete_vocab", {}).get(user_id, {})
+    user_vocab = state.get("users", {}).get(user_id, {}).get("casete_vocab", {})
     known = set(user_vocab.get("known", []))
     counts = user_vocab.get("counts", {})
     threshold = user_vocab.get("threshold", 3)
