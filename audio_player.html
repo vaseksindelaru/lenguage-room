@@ -532,7 +532,16 @@
         async function playAudio(audioBytes) {
             if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
             if (audioContext.state === 'suspended') await audioContext.resume();
-            
+
+            // ═══ ANTI-ECHO: bloquear reconocimiento durante reproducción + margen ═══
+            // Cuando el bot habla, el audio sale por los speakers. Si Discord TTS
+            // reemite el mensaje o el Web Speech API capta el eco del audio del bot,
+            // entra al mic como "voz del usuario" → loop infinito.
+            // Bloqueamos recognition durante la duración del audio + 2s de margen
+            // para evitar que el micro capte el "tail" del audio que sale por speakers.
+            const recognitionBlockedUntil = Date.now() + (audioBytes.length / 16000) * 1000 + 2000;
+            try { localStorage.setItem('recognition_blocked_until', String(recognitionBlockedUntil)); } catch (e) {}
+
             try {
                 const arrayBuffer = audioBytes.buffer;
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -687,6 +696,14 @@
                 }
                 
                 if (finalTranscript) {
+                    // ═══ ANTI-ECHO: descartar transcripción durante reproducción de bot ═══
+                    const blockedUntil = parseInt(localStorage.getItem('recognition_blocked_until') || '0', 10);
+                    if (Date.now() < blockedUntil) {
+                        console.warn('🚫 ANTI-ECHO: descartado (bot hablando)', finalTranscript);
+                        status.textContent = '🚫 Eco descartado, espera a que termine el bot';
+                        status.className = 'voice-status error';
+                        return;
+                    }
                     status.textContent = '✅ Enviando: ' + finalTranscript.trim();
                     status.className = 'voice-status success';
                     sendVoiceToDiscord(finalTranscript.trim());
@@ -736,7 +753,17 @@
                 if (!initSpeechRecognition()) return;
             }
             if (isRecognizing) return;
-            
+
+            // ═══ ANTI-ECHO: rechazar arranque durante reproducción de audio de bot ═══
+            const blockedUntil = parseInt(localStorage.getItem('recognition_blocked_until') || '0', 10);
+            if (Date.now() < blockedUntil) {
+                const waitSec = Math.ceil((blockedUntil - Date.now()) / 1000);
+                const status = document.getElementById('voiceStatus');
+                status.textContent = `⏳ Espera ${waitSec}s (bot hablando, evita eco)`;
+                status.className = 'voice-status';
+                return;
+            }
+
             try {
                 recognition.start();
             } catch (e) {
