@@ -6,9 +6,12 @@ import json
 import os
 import copy
 import threading
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger("state_manager")
 
 STATE_DIR = Path.home() / ".english-bot"
 STATE_PATH = STATE_DIR / "state.json"
@@ -35,7 +38,8 @@ def load_state() -> Dict[str, Any]:
     ensure_state_dir()
     
     if not STATE_PATH.exists():
-        return DEFAULT_STATE.copy()
+        state = DEFAULT_STATE.copy()
+        return migrate_state_v1_to_v2(state)
     
     try:
         with open(STATE_PATH, "r", encoding="utf-8") as f:
@@ -50,10 +54,13 @@ def load_state() -> Dict[str, Any]:
         if len(state.get("conversation_history", [])) > MAX_HISTORY:
             state["conversation_history"] = state["conversation_history"][-MAX_HISTORY:]
         
+        # ─── MIGRACIÓN v1→v2 ───
+        state = migrate_state_v1_to_v2(state)
+        
         return state
     except (json.JSONDecodeError, OSError):
         # Corrupted or unreadable - return default
-        return DEFAULT_STATE.copy()
+        return migrate_state_v1_to_v2(DEFAULT_STATE.copy())
 
 
 def save_state(state: Dict[str, Any]) -> None:
@@ -108,6 +115,57 @@ def get_welcome_message(state: Dict[str, Any], topics: Optional[list] = None) ->
     paused_str = " (paused)" if state.get("paused") else ""
     
     return f"Welcome back! Last session: {last_str}. Topic: {topic_name}{paused_str}. Resuming..."
+
+
+# ─── State migration ───────────────────────────────────────────────────────
+
+def migrate_state_v1_to_v2(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Migra state v1 (conversation_history global) a v2 (users per-id).
+    
+    Idempotente: si ya es v2, devuelve el state sin cambios.
+    Si es v1, mueve el conversation_history a users['legacy_vaclav'].
+    
+    Mantiene conversation_history global (recortado a 50) para compat
+    con conversation_loop y !speak.
+    """
+    if state.get("version", 1) >= 2:
+        return state
+    
+    logger.info("🔄 Migrating state v1 → v2")
+    legacy_history = state.pop("conversation_history", [])
+    
+    state["version"] = 2
+    state.setdefault("users", {})
+    
+    if "users" not in state or not state["users"]:
+        state["users"] = {
+            "legacy_vaclav": {
+                "name": "Vaclav",
+                "interests": [],
+                "casete_vocab": state.pop("casete_vocab", {}).get("legacy_vaclav", {}),
+                "sessions": [{
+                    "id": "legacy",
+                    "topic": "Migrated from v1",
+                    "created": state.get("last_session", datetime.now().isoformat()),
+                    "updated": datetime.now().isoformat(),
+                    "messages": legacy_history,
+                }],
+                "active_session": "legacy",
+            }
+        }
+    else:
+        # Si ya hay users, solo añadir estructura mínima
+        for uid, udata in state["users"].items():
+            udata.setdefault("name", "Unknown")
+            udata.setdefault("interests", [])
+            udata.setdefault("casete_vocab", {})
+            udata.setdefault("sessions", [])
+            udata.setdefault("active_session", None)
+    
+    # conversation_history global se mantiene (recortado)
+    state["conversation_history"] = legacy_history[-MAX_HISTORY:]
+    logger.info(f"🔄 Migration done: {len(legacy_history)} legacy messages")
+    return state
 
 
 # ─── Personas Persistence ──────────────────────────────────────────────────
