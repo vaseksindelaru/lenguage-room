@@ -450,3 +450,71 @@ def register_word_heard(state: Dict[str, Any], user_id: str, word: str) -> bool:
         return True
         
     return False
+
+
+# ─── User sessions (persistent, no trim) ───────────────────────────────────
+
+def list_user_sessions(state: Dict[str, Any], user_id: str) -> list:
+    """Lista sesiones del user (resumidas: id, topic, created, updated, #msgs)."""
+    sessions = state.get("users", {}).get(user_id, {}).get("sessions", [])
+    return [
+        {
+            "id": s.get("id"),
+            "topic": s.get("topic", "Untitled"),
+            "created": s.get("created"),
+            "updated": s.get("updated"),
+            "message_count": len(s.get("messages", [])),
+        }
+        for s in sessions
+    ]
+
+def get_active_session(state: Dict[str, Any], user_id: str) -> Optional[dict]:
+    """Devuelve la sesión activa del user, o None."""
+    user = state.get("users", {}).get(user_id, {})
+    sid = user.get("active_session")
+    if not sid:
+        return None
+    for s in user.get("sessions", []):
+        if s.get("id") == sid:
+            return s
+    return None
+
+def set_active_session(state: Dict[str, Any], user_id: str, session_id: str) -> bool:
+    """Marca una sesión como activa. Devuelve True si existe."""
+    user = state.get("users", {}).get(user_id, {})
+    if any(s.get("id") == session_id for s in user.get("sessions", [])):
+        user["active_session"] = session_id
+        return True
+    return False
+
+def create_user_session(state: Dict[str, Any], user_id: str, topic: str = "Untitled") -> dict:
+    """Crea una nueva sesión vacía para el user, la marca como activa."""
+    import uuid
+    user = state.setdefault("users", {}).setdefault(user_id, {
+        "name": "Unknown",
+        "interests": [],
+        "casete_vocab": {},
+        "sessions": [],
+        "active_session": None,
+    })
+    session = {
+        "id": str(uuid.uuid4())[:8],
+        "topic": topic,
+        "created": datetime.now().isoformat(),
+        "updated": datetime.now().isoformat(),
+        "messages": [],
+    }
+    user["sessions"].append(session)
+    user["active_session"] = session["id"]
+    logger.info(f"📂 Sesión creada: {session['id']} (user={user_id}, topic={topic})")
+    return session
+
+def append_session_message(state: Dict[str, Any], user_id: str, message: dict) -> None:
+    """Añade un mensaje a la sesión activa del user."""
+    session = get_active_session(state, user_id)
+    if not session:
+        # Auto-crear sesión si no hay activa
+        create_user_session(state, user_id, "Auto-created")
+        session = get_active_session(state, user_id)
+    session["messages"].append(message)
+    session["updated"] = datetime.now().isoformat()
