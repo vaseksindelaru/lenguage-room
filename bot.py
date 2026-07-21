@@ -106,7 +106,11 @@ from openai import OpenAI, APIStatusError
 from audio_server import init_audio_server
 
 # State management
-from state_manager import load_state, save_state, get_welcome_message, STATE_PATH, MAX_HISTORY, register_word_heard
+from state_manager import (
+    load_state, save_state, get_welcome_message, STATE_PATH, MAX_HISTORY,
+    register_word_heard, list_user_sessions, create_user_session,
+    get_active_session, set_active_session
+)
 
 AUDIO_SERVER_URL = "http://localhost:8081/api/audio"
 
@@ -1164,24 +1168,56 @@ async def cmd_resume(ctx):
 
 @bot.command(name="topic")
 async def cmd_topic(ctx, *, subcommand: str = ""):
-    """Show current topic, list topics, or change topic.
-    
-    Usage:
-        !topic              - Show current topic
-        !topic list         - List all topics with index
-        !topic <name/index> - Change topic by name or index
-        !topic next         - Go to next topic
-    """
+    """!topic [list|next|suggest|refresh|pick <texto>|index]"""
     global current_topic_index, topic_locked, bots_paused
+    
+    user_id = str(ctx.author.id)
+    state = load_state()
+    user = state.setdefault("users", {}).setdefault(user_id, {
+        "name": ctx.author.name, "interests": [], "casete_vocab": {},
+        "sessions": [], "active_session": None,
+    })
     
     subcommand = subcommand.strip().lower()
     
+    if subcommand.startswith("pick "):
+        custom = subcommand[5:].strip()
+        state["custom_topic"] = {"theme": custom, "hook": f"Let's talk about {custom}!"}
+        save_state(state)
+        await ctx.send(f"✅ Tema personalizado fijado: **{custom}**")
+        return
+        
+    if subcommand in ("suggest", "refresh"):
+        if not user.get("interests"):
+            await ctx.send("❌ No sé tus intereses. Añade algunos con `!preferences add ...` y vuelve a probar.")
+            return
+        
+        await ctx.send("⏳ Pensando un tema basado en tus intereses...")
+        prompt = (f"El jugador está aprendiendo inglés B2. Sus intereses son: {', '.join(user['interests'])}. "
+                  "Sugiere 1 tema de conversación MUY ESPECÍFICO y original que mezcle 2 o más de sus intereses. "
+                  "Devuelve SOLO el tema, sin explicaciones, max 6 palabras.")
+        # Reutilizamos call_openrouter desde cerebras (rápido)
+        topic_text = await call_openrouter([{"role":"user","content":prompt}], temperature=0.8, provider_override="cerebras")
+        if not topic_text:
+            topic_text = "The intersection of " + " and ".join(user['interests'][:2])
+        
+        state["custom_topic"] = {"theme": topic_text, "hook": f"Let's talk about this cool topic: {topic_text}!"}
+        save_state(state)
+        await ctx.send(f"💡 Sugerencia LLM fijada como tema actual:\n**{topic_text}**\n\n(Usa `!topic refresh` para otra o `!speak` para empezar)")
+        return
+    
     if not subcommand or subcommand == "show":
         # Show current topic
-        topic = TOPICS[current_topic_index]
+        if state.get("custom_topic"):
+            topic = state["custom_topic"]
+            vocab_text = "Custom LLM Suggestion"
+        else:
+            topic = TOPICS[current_topic_index]
+            vocab_text = ", ".join(topic.get('seed_vocab', []))
+            
         embed = discord.Embed(
             title=f"📚 Current Topic: {topic['theme']}",
-            description=f"{topic['hook']}\n\n**Key vocabulary:** {', '.join(topic['seed_vocab'])}",
+            description=f"{topic['hook']}\n\n**Key vocabulary:** {vocab_text}",
             color=0x5865F2,
         )
         await ctx.send(embed=embed)
@@ -1396,6 +1432,121 @@ async def cmd_helpme(ctx, *, spanish_phrase: str = ""):
             color=0xEB459E,
         )
         await ctx.send(embed=embed)
+
+
+# ─── Sessions ──────────────────────────────────────────────────────────────
+
+@bot.command(name="sessions")
+async def cmd_sessions(ctx):
+    """Lista las sesiones guardadas del usuario."""
+    user_id = str(ctx.author.id)
+    state = load_state()
+    sessions = list_user_sessions(state, user_id)
+    if not sessions:
+        await ctx.send("📂 No tienes sesiones guardadas aún.")
+        return
+    lines = [f"📂 **{len(sessions)} sesiones:**"]
+    for s in sessions[:10]:
+        marker = "▶️" if s["id"] == state.get("users", {}).get(user_id, {}).get("active_session") else "  "
+        lines.append(f"{marker} `{s['id']}` — {s['topic']} ({s['message_count']} msgs, {s['created'][:10]})")
+    await ctx.send("\n".join(lines))
+
+@bot.command(name="session")
+async def cmd_session(ctx, subcmd: str = "", *, arg: str = ""):
+    """Subcomandos: new, resume, save."""
+    user_id = str(ctx.author.id)
+    state = load_state()
+    
+    if subcmd == "new":
+        topic = arg or "Untitled"
+        sess = create_user_session(state, user_id, topic)
+        save_state(state)
+        await ctx.send(f"📂 Sesión creada: `{sess['id']}` (tema: {topic})")
+    
+    elif subcmd == "resume":
+        if arg == "last":
+            sessions = state.get("users", {}).get(user_id, {}).get("sessions", [])
+            if not sessions:
+                await ctx.send("📂 No hay sesiones para retomar.")
+                return
+            target_id = sessions[-1]["id"]
+        else:
+            target_id = arg
+        if set_active_session(state, user_id, target_id):
+            save_state(state)
+            active = get_active_session(state, user_id)
+            n_msgs = len(active.get("messages", []))
+            await ctx.send(f"▶️ Sesión `{target_id}` retomada ({n_msgs} mensajes, tema: {active.get('topic','?')})")
+        else:
+            await ctx.send(f"❌ Sesión `{target_id}` no encontrada.")
+    
+    elif subcmd == "save":
+        # Export a Obsidian vía audio_server
+        import aiohttp
+        active = get_active_session(state, user_id)
+        if not active:
+            await ctx.send("❌ No hay sesión activa.")
+            return
+        try:
+            async with aiohttp.ClientSession() as session_http:
+                async with session_http.post(
+                    "http://localhost:8081/api/session/save-obsidian",
+                    json={"user_id": user_id, "session_id": active["id"]},
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    data = await resp.json()
+                    if resp.status == 200:
+                        await ctx.send(f"💾 Sesión exportada a Obsidian: `{data.get('path','?')}`")
+                    else:
+                        await ctx.send(f"❌ Error al exportar: {data.get('error','?')}")
+        except Exception as e:
+            await ctx.send(f"❌ No se pudo conectar al audio server: {e}")
+    
+    else:
+        await ctx.send("Subcomandos: `!session new [tema]`, `!session resume <id|last>`, `!session save`")
+
+# ─── Preferences ───────────────────────────────────────────────────────────
+
+@bot.command(name="preferences")
+async def cmd_preferences(ctx, action: str = "", *, args: str = ""):
+    """!preferences [add|remove|clear|list] <words...>"""
+    user_id = str(ctx.author.id)
+    state = load_state()
+    user = state.setdefault("users", {}).setdefault(user_id, {
+        "name": ctx.author.name,
+        "interests": [],
+        "casete_vocab": {},
+        "sessions": [],
+        "active_session": None,
+    })
+    interests = user.setdefault("interests", [])
+    
+    if action == "add" and args:
+        new_words = [w.strip().lower() for w in args.split() if w.strip()]
+        added = [w for w in new_words if w not in interests]
+        interests.extend(added)
+        save_state(state)
+        await ctx.send(f"✅ Añadidos: {', '.join(added) if added else '(ninguno nuevo)'}. Total: {len(interests)}")
+    
+    elif action == "remove" and args:
+        words = [w.strip().lower() for w in args.split() if w.strip()]
+        removed = [w for w in words if w in interests]
+        for w in removed:
+            interests.remove(w)
+        save_state(state)
+        await ctx.send(f"🗑️ Quitados: {', '.join(removed) if removed else '(ninguno)'}. Total: {len(interests)}")
+    
+    elif action == "clear":
+        interests.clear()
+        save_state(state)
+        await ctx.send("🗑️ Intereses borrados.")
+    
+    else:
+        # list (default)
+        if not interests:
+            await ctx.send("📋 Sin intereses. Usa `!preferences add travel cooking tech`")
+        else:
+            await ctx.send(f"📋 Intereses: {', '.join(interests)}")
 
 
 @bot.command(name="score")
