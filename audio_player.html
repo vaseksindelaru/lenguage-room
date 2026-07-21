@@ -810,7 +810,13 @@
                     const emojiEl = document.getElementById('emoji-' + name);
                     const voiceEl = document.getElementById('voice-' + name);
                     if (emojiEl) emojiEl.textContent = agent.emoji || '';
-                    if (voiceEl) voiceEl.textContent = agent.voice || '';
+                    if (voiceEl) {
+                        if (typeof agent.voice === 'object' && agent.voice !== null) {
+                            voiceEl.textContent = agent.voice.provider + (agent.voice.voice_id ? " · cyborg" : "");
+                        } else {
+                            voiceEl.textContent = agent.voice || '';
+                        }
+                    }
                 }
             } catch (e) { console.warn('Could not refresh agent cards:', e); }
         }
