@@ -324,3 +324,71 @@ def save_personas(data: Dict[str, Any]) -> None:
 
     with _personas_lock:
         _save_personas_unlocked(data)
+
+
+# ─── Casete vocabulary (per-user, persistent) ──────────────────────────────
+
+def get_casete_known(state: Dict[str, Any], user_id: str) -> list:
+    """Devuelve palabras conocidas (cruzaron el umbral) para user_id, sorted."""
+    vocab = state.get("casete_vocab", {}).get(user_id, {})
+    return sorted(vocab.get("known", []))
+
+def get_casete_counts(state: Dict[str, Any], user_id: str) -> Dict[str, int]:
+    """Devuelve dict {word: count} para user_id."""
+    vocab = state.get("casete_vocab", {}).get(user_id, {})
+    return dict(vocab.get("counts", {}))
+
+def get_casete_threshold(state: Dict[str, Any], user_id: str) -> int:
+    """Devuelve el umbral del usuario (default 3)."""
+    vocab = state.get("casete_vocab", {}).get(user_id, {})
+    return int(vocab.get("threshold", 3))
+
+def set_casete_threshold(state: Dict[str, Any], user_id: str, threshold: int) -> None:
+    """Cambia el umbral de un usuario. Mínimo 1, máximo 99."""
+    threshold = max(1, min(99, int(threshold)))
+    state.setdefault("casete_vocab", {}).setdefault(user_id, {})
+    state["casete_vocab"][user_id]["threshold"] = threshold
+
+def register_word_heard(state: Dict[str, Any], user_id: str, word: str) -> bool:
+    """Incrementa el contador de `word` para `user_id`.
+    
+    Si la palabra cruza el umbral, se añade a `known`.
+    Devuelve True si la palabra es NUEVA en `known` (cruzó el umbral AHORA).
+    Devuelve False si ya estaba, o si no cruzó el umbral todavía.
+    
+    Side effect: modifica `state` in-place. El caller debe persistir con save_state.
+    """
+    word = (word or "").lower().strip()
+    if not word or len(word) < 4:
+        return False
+    
+    state.setdefault("casete_vocab", {}).setdefault(user_id, {
+        "threshold": 3,
+        "counts": {},
+        "known": [],
+        "first_seen": {},
+    })
+    user_vocab = state["casete_vocab"][user_id]
+    user_vocab.setdefault("threshold", 3)
+    user_vocab.setdefault("counts", {})
+    user_vocab.setdefault("known", [])
+    user_vocab.setdefault("first_seen", {})
+    
+    known_set = set(user_vocab["known"])
+    if word in known_set:
+        return False  # ya estaba en known, no hacer nada
+    
+    # Registrar first_seen solo la primera vez
+    if word not in user_vocab["first_seen"]:
+        user_vocab["first_seen"][word] = datetime.now().isoformat()
+    
+    # Incrementar contador
+    new_count = user_vocab["counts"].get(word, 0) + 1
+    user_vocab["counts"][word] = new_count
+    
+    # Check umbral
+    if new_count >= user_vocab["threshold"]:
+        user_vocab["known"].append(word)
+        return True
+        
+    return False
