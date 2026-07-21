@@ -26,6 +26,75 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from pathlib import Path
 
+# ─── Vocabulary extraction (Casete) ────────────────────────────────────────
+_STOPWORDS_EN = frozenset({
+    "the","a","an","is","are","was","were","be","been","being","i","you",
+    "he","she","it","we","they","my","your","his","her","its","our","their",
+    "this","that","these","those","and","but","or","so","of","in","on","at",
+    "to","for","with","from","by","as","if","then","than","do","does","did",
+    "have","has","had","will","would","can","could","should","may","might",
+    "about","what","when","where","who","how","why","yes","no","ok","okay",
+    "really","very","just","like","think","know","get","got","go","going",
+    "make","made","take","took","come","came","see","saw","say","said",
+    "tell","told","give","gave","put","let","try","tried","need","want",
+    "new","old","good","bad","big","small","long","short","high","low",
+    "right","wrong","first","last","next","still","now","then","here",
+    "there","where","when","why","how","out","off","up","down","over",
+    "under","again","more","most","some","any","all","each","every",
+    "other","such","only","own","same","than","too","very","much","many",
+    "few","little","well","back","after","before","between","through",
+    "because","while","during","without","within","upon","toward",
+})
+
+_NOTABLE_WORD_RE = re.compile(r'\b[a-zA-Z]{4,}\b')
+
+def extract_notable_words(text: str) -> list[str]:
+    """Extrae palabras notables: ≥4 letras, solo alfabéticas, no stopwords EN.
+    
+    Devuelve la lista en minúsculas, sin duplicados en el mismo mensaje
+    (pero el caller llama a register_word_heard por cada una igualmente,
+    porque pueden venir en mensajes distintos).
+    """
+    words = _NOTABLE_WORD_RE.findall(text.lower())
+    return [w for w in words if w not in _STOPWORDS_EN]
+
+
+def extract_target_word(text: str) -> str:
+    """Extrae la palabra objetivo de un mensaje tipo 'cómo se dice <word>'.
+    
+    Heurística: busca la última palabra entre comillas, o la última palabra
+    notable del mensaje si no hay comillas.
+    """
+    # 1. Intentar extraer de comillas
+    quoted = re.search(r'["\']([^"\']+)["\']', text)
+    if quoted:
+        candidate = quoted.group(1).strip().lower()
+        words_in_quotes = _NOTABLE_WORD_RE.findall(candidate)
+        if words_in_quotes:
+            return words_in_quotes[-1]
+    
+    # 2. Última palabra notable del mensaje
+    notables = extract_notable_words(text)
+    return notables[-1] if notables else ""
+
+
+def truncate_casete_response(text: str, max_chars: int = 80) -> str:
+    """Trunca la respuesta de Casete a ~20 tokens sin partir palabras."""
+    text = text.strip()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars-1].rsplit(" ", 1)[0].rstrip(",.;:") + "!"
+
+
+# Regex de triggers para invocar a Casete sin "!casete"
+CASETE_TRIGGERS = [
+    r"\bc[oó]mo se dice\b",
+    r"\bhow (?:do you|to) say\b",
+    r"\bwhat(?:'s| is) the word for\b",
+    r"\bno s[eé] c[oó]mo\b",
+]
+_CASETE_TRIGGERS_RE = re.compile("|".join(CASETE_TRIGGERS), re.IGNORECASE)
+
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -37,7 +106,7 @@ from openai import OpenAI, APIStatusError
 from audio_server import init_audio_server
 
 # State management
-from state_manager import load_state, save_state, get_welcome_message, STATE_PATH, MAX_HISTORY
+from state_manager import load_state, save_state, get_welcome_message, STATE_PATH, MAX_HISTORY, register_word_heard
 
 AUDIO_SERVER_URL = "http://localhost:8081/api/audio"
 
@@ -747,11 +816,73 @@ async def decide_next_agent() -> str:
     # Avoid same agent twice in a row
     if recent_agents:
         last = recent_agents[-1]
-        weights[last] = 0
+        if last in weights:   # ← solo agentes en el weighted random (excluye Casete)
+            weights[last] = 0
 
     agents = list(weights.keys())
     w = [weights[a] for a in agents]
     return random.choices(agents, weights=w, k=1)[0]
+
+
+async def on_casete_help(channel, user_id: str, target_word: str) -> None:
+    """Responde a la petición de vocabulario de un jugador.
+    
+    Regla de oro: la palabra NUNCA la genera el LLM. Sale del lookup en known.
+    Si no está en known, devuelve frase fija SIN tocar el LLM.
+    """
+    if not target_word or not target_word.strip():
+        await send_agent_message(channel, "Casete",
+            "🦜 ¿Qué palabra? Dime una palabra y te ayudo.", user_id=user_id)
+        return
+    
+    state = load_state()
+    user_vocab = state.get("casete_vocab", {}).get(user_id, {})
+    known = set(user_vocab.get("known", []))
+    counts = user_vocab.get("counts", {})
+    threshold = user_vocab.get("threshold", 3)
+    normalized = target_word.lower().strip()
+    
+    if normalized in known:
+        # ✅ CASO A: palabra conocida → LLM genera SOLO la frase de entusiasmo
+        logger.info(f"🦜 Casete help: '{normalized}' KNOWN → LLM call")
+        prompt = (f"El jugador te pidió soplar la palabra '{normalized}'. "
+                  f"Ya la tienes grabada. Repítela con entusiasmo de loro cyborg. "
+                  f"Frase corta en inglés (≤15 palabras).")
+        try:
+            reaction = await call_openrouter(
+                [{"role": "user", "content": prompt}],
+                system=AGENT_PERSONAS["Casete"],
+                temperature=0.9,
+            )
+            text = truncate_casete_response(reaction or f"¡{normalized}! ¡{normalized}!")
+        except Exception as e:
+            logger.error(f"❌ Casete LLM call failed: {e}")
+            text = f"¡{normalized}! ¡{normalized}! ¡Casete lo tiene grabado!"
+    else:
+        # ❌ CASO B: NO conocida → frase fija, SIN LLM
+        logger.info(f"🦜 Casete help: '{normalized}' NOT in known → fixed phrase (no LLM)")
+        heard = counts.get(normalized, 0)
+        if heard > 0:
+            text = (f"🦜 Hmm... todavía no la tengo bien grabada. "
+                    f"La he oído {heard}/{threshold} veces. "
+                    f"¡Dila un poco más en la sala y la recordaré!")
+        else:
+            text = ("🦜 Hmm... esa todavía no me la han soplado. "
+                    "Úsala en la sala y la grabaré en mi memoria.")
+    
+    await send_agent_message(channel, "Casete", text, user_id=user_id)
+
+
+async def maybe_invoke_casete(message) -> bool:
+    """Evalúa triggers en on_message. Devuelve True si Casete respondió (y hay que parar)."""
+    if _CASETE_TRIGGERS_RE.search(message.content):
+        word = extract_target_word(message.content)
+        if word:
+            user_id = str(message.author.id)
+            logger.info(f"🦜 Casete trigger for {user_id}: '{word}'")
+            await on_casete_help(message.channel, user_id, word)
+            return True
+    return False
 
 
 def get_avatar_url(agent_name: str) -> str:
@@ -944,6 +1075,12 @@ async def on_message(message: discord.Message):
     is_human = True
     author_name = message.author.name  # real Discord name: Vaclav, Ronny, etc.
     
+    # ─── Casete: trigger check (después de filtros, antes del sorteo) ───
+    user_id = str(message.author.id)
+    casete_handled = await maybe_invoke_casete(message)
+    if casete_handled:
+        return  # Casete respondió, no continuar con sorteo normal
+    
     # Add to conversation history
     conversation_history.append({
         "author": author_name,
@@ -951,6 +1088,15 @@ async def on_message(message: discord.Message):
         "timestamp": datetime.now().isoformat(),
         "is_human": is_human,
     })
+    
+    # ─── Conteo de vocabulario Casete (humanos y agentes) ───
+    user_id = str(message.author.id)
+    state = load_state()
+    for w in extract_notable_words(message.content):
+        crossed = register_word_heard(state, user_id, w)
+        if crossed:
+            logger.info(f"🦜 Nueva palabra en vocab de {user_id}: '{w}'")
+    save_state(state)
     
     # Update activity tracking (for any human)
     if is_human:
@@ -1225,6 +1371,12 @@ async def cmd_speak(ctx):
         await asyncio.sleep(2.0)
         ignore_bot_messages = False
         logger.info(f"!speak DONE - ignore_bot_messages = False")
+
+
+@bot.command(name="casete")
+async def cmd_casete(ctx, *, word: str = ""):
+    """Pide a Casete que sople una palabra. !casete <word>"""
+    await on_casete_help(ctx.channel, str(ctx.author.id), word)
 
 
 @bot.command(name="helpme")
