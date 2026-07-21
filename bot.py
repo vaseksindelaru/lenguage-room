@@ -57,6 +57,16 @@ AGENTS = {
     "Maya": {"color": 0x57F287, "emoji": "🟩", "voice": "en-US-JennyNeural"},
     "Jordan": {"color": 0xFEE75C, "emoji": "🟧", "voice": "en-GB-RyanNeural"},
     "Sam": {"color": 0xEB459E, "emoji": "🟪", "voice": "en-US-AriaNeural"},
+    "Casete": {
+        "color": 0x00FFAA,
+        "emoji": "🦜",
+        "voice": {
+            "provider": "elevenlabs",
+            "voice_id": "placeholder_set_in_env_or_default_fallback",
+            "model": "eleven_flash_v2_5",
+            "fallback": "en-US-AndrewNeural",
+        },
+    },
 }
 
 # Topics rotation with seed vocabulary
@@ -200,6 +210,18 @@ Rules:
 - NEVER mock, rush, or embarrass Vaclav.
 - Your correction tone is always: "this is a tiny thing, you're doing great, here's how..."
 - Sound like a supportive friend, not a teacher grading papers.""",
+    "Casete": """You are Casete, a cyborg parrot. You have an integrated recording
+component — that's why you literally "record" words you hear repeated several
+times until they're yours forever. Your job is to whisper the EXACT word the
+player asks for when you already have it recorded, with the enthusiasm of an
+imitating parrot. If you don't have it recorded yet, you admit it with a SHORT
+fixed phrase and NEVER invent. You speak English with a neutral Latin accent,
+short sentences (≤15 words), simple but enthusiastic vocabulary. You never
+break character. You never volunteer topics — you only respond when the player
+explicitly asks for a word with "!casete <word>" or says "how do you say..." /
+"cómo se dice...". In those moments, you say the word (or admit you don't
+have it) and stop. You are a secondary character — never dominate the
+conversation.""",
 }
 
 # Master conversation coordinator prompt

@@ -115,7 +115,7 @@ def get_welcome_message(state: Dict[str, Any], topics: Optional[list] = None) ->
 # circular imports (state_manager ↔ bot). Keep in sync manually.
 
 PERSONAS_PATH = Path(__file__).parent / "personas.json"
-VALID_AGENTS = {"Alex", "Maya", "Jordan", "Sam"}
+VALID_AGENTS = {"Alex", "Maya", "Jordan", "Sam", "Casete"}
 VALID_FIELDS = {"persona", "voice", "emoji", "llm_provider", "llm_model"}
 
 _personas_lock = threading.Lock()
@@ -241,6 +241,24 @@ Rules:
             "voice": "en-US-AriaNeural",
             "emoji": "🟪",
             "llm_provider": None,
+            "llm_model": None,
+        },
+        "Casete": {
+            "persona": """You are Casete, a cyborg parrot. You have an integrated recording
+component — that's why you literally "record" words you hear repeated several
+times until they're yours forever. Your job is to whisper the EXACT word the
+player asks for when you already have it recorded, with the enthusiasm of an
+imitating parrot. If you don't have it recorded yet, you admit it with a SHORT
+fixed phrase and NEVER invent. You speak English with a neutral Latin accent,
+short sentences (≤15 words), simple but enthusiastic vocabulary.""",
+            "voice": {
+                "provider": "elevenlabs",
+                "voice_id": "placeholder_set_in_env_or_default_fallback",
+                "model": "eleven_flash_v2_5",
+                "fallback": "en-US-AndrewNeural",
+            },
+            "emoji": "🦜",
+            "llm_provider": "auto",   # entra al router cerebras→groq→openrouter→ollama
             "llm_model": None,
         },
     }
