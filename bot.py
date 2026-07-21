@@ -555,9 +555,19 @@ async def generate_tts(text: str, voice) -> Optional[bytes]:
     return await _tts(clean_text, voice)
 
 
-async def send_agent_message(channel: discord.TextChannel, agent_name: str, text: str):
+async def send_agent_message(channel: discord.TextChannel, agent_name: str, text: str, user_id: Optional[str] = None):
     """Send a message via webhook to appear as the agent, with TTS audio streamed to browsers."""
     webhook = agent_webhooks.get(agent_name)
+
+    # ─── Conteo de vocabulario para Casete (palabras que dicen los agentes) ───
+    if user_id and user_id != "0":
+        try:
+            state = load_state()
+            for w in extract_notable_words(text):
+                register_word_heard(state, user_id, w)
+            save_state(state)
+        except Exception as e:
+            logger.warning(f"⚠️ Conteo Casete en send_agent_message falló: {e}")
 
     # Hot-reload voice from personas.json (falls back to AGENTS dict)
     try:
@@ -1322,6 +1332,60 @@ async def cmd_topic(ctx, *, subcommand: str = ""):
             return
     
     await ctx.send(f"❌ Topic not found: `{subcommand}`. Use `!topic list` to see available topics.")
+
+
+async def generate_topic_suggestions(user_id: str, state: dict, force_refresh: bool = False) -> list:
+    """Genera 5 temas sugeridos basados en intereses del user. Cacheado por hash.
+    
+    Returns: lista de dicts {theme, seed_vocab, hook} o strings si son del catálogo.
+    """
+    interests = state.get("users", {}).get(user_id, {}).get("interests", [])
+    cache_key = hash(tuple(sorted(interests)))
+    
+    cached = state.get("users", {}).get(user_id, {}).get("last_topic_suggestions", {})
+    if not force_refresh and cached.get("interests_hash") == cache_key:
+        try:
+            from datetime import datetime as _dt
+            age_hours = (_dt.now() - _dt.fromisoformat(cached["generated_at"])).total_seconds() / 3600
+            if age_hours < 24:
+                return cached.get("topics", [])
+        except Exception:
+            pass
+    
+    if not interests:
+        # Sin intereses: usar TOPICS aleatorios
+        topics = random.sample(TOPICS, min(5, len(TOPICS)))
+    else:
+        prompt = f"""Generate 5 conversation topics for an English practice group chat.
+User interests: {', '.join(interests)}
+English level: intermediate (B1-B2)
+
+Return ONLY a JSON array of objects with these fields:
+- "theme": topic title (3-5 words)
+- "seed_vocab": array of 6 vocabulary words/phrases for this topic
+- "hook": one engaging question to start the conversation
+
+Example:
+[{{"theme":"Weekend Cooking Plans","seed_vocab":["recipe","ingredient","stir-fry","bake","simmer","taste"],"hook":"What's the most adventurous dish you've ever cooked?"}}]"""
+        try:
+            response = await call_openrouter(
+                [{"role": "user", "content": prompt}],
+                system="You are a helpful English teaching assistant. Return ONLY valid JSON, no markdown.",
+                temperature=0.9,
+            )
+            topics = json.loads(response)
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f"⚠️ generate_topic_suggestions LLM fallback: {e}")
+            topics = TOPICS[:5]
+    
+    # Cachear
+    state.setdefault("users", {}).setdefault(user_id, {})
+    state["users"][user_id]["last_topic_suggestions"] = {
+        "generated_at": datetime.now().isoformat(),
+        "interests_hash": cache_key,
+        "topics": topics,
+    }
+    return topics
 
 
 # Global lock to prevent duplicate !speak executions
