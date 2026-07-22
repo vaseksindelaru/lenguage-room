@@ -1100,7 +1100,11 @@ async def on_message(message: discord.Message):
     
     # Handle commands (let discord.py process them ONCE)
     if message.content.startswith("!"):
-        await bot.process_commands(message)
+        logger.info(f"📩 Command received: {message.content[:50]} from {message.author.name}")
+        try:
+            await bot.process_commands(message)
+        except Exception as e:
+            logger.error(f"❌ Error processing command: {e}", exc_info=True)
         return  # IMPORTANT: return here, don't reach the end
     
     # MULTI-USER: any human (non-bot) can trigger bots
@@ -1500,6 +1504,96 @@ async def cmd_casete(ctx, *, word: str = ""):
     if "Casete" not in active:
         return
     await on_casete_help(ctx.channel, str(ctx.author.id), word)
+
+
+@bot.command(name="video")
+async def cmd_video(ctx, url: str = ""):
+    """Fetch YouTube video transcript and discuss with bots. !video <URL>"""
+    logger.info(f"📺 !video command received from {ctx.author.name}: {url}")
+    
+    if not url:
+        await ctx.send("📺 Usa: `!video <YouTube URL>` para discutir un video.")
+        return
+
+    # Clean URL
+    url = url.strip().strip("<>")
+    
+    await ctx.send(f"📺 Buscando transcripción del video...")
+
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        
+        # Extract video ID from URL
+        video_id = None
+        if "v=" in url:
+            video_id = url.split("v=")[1].split("&")[0]
+        elif "youtu.be/" in url:
+            video_id = url.split("youtu.be/")[1].split("?")[0]
+        elif "shorts/" in url:
+            video_id = url.split("shorts/")[1].split("?")[0]
+        else:
+            video_id = url  # Assume it's a raw ID
+        
+        if not video_id or len(video_id) < 10:
+            await ctx.send("❌ URL no válida. Usa: `!video <YouTube URL>`")
+            return
+
+        # Fetch transcript (new API: YouTubeTranscriptApi().fetch())
+        try:
+            api = YouTubeTranscriptApi()
+            transcript = api.fetch(video_id)
+        except Exception as e:
+            await ctx.send(f"❌ No se pudo obtener la transcripción: {e}")
+            return
+
+        if not transcript:
+            await ctx.send("❌ El video no tiene transcripción disponible.")
+            return
+
+        # Combine transcript into text (last 1500 chars to fit in token limit)
+        full_text = " ".join([snippet.text for snippet in transcript])
+        if len(full_text) > 1500:
+            full_text = full_text[-1500:]
+            full_text = "..." + full_text
+
+        # Add video as the most recent human message
+        # Clear old context to make the video the focus of the conversation
+        conversation_history.append({
+            "author": ctx.author.name,
+            "content": f"I just shared a YouTube video: {url}\n\nVideo transcript (last 1500 chars):\n{full_text}\n\nPlease share your thoughts about this video.",
+            "timestamp": datetime.now().isoformat(),
+            "is_human": True,
+        })
+
+        await ctx.send(f"✅ Transcripción obtenida ({len(full_text)} chars). Discutiendo...")
+
+        # Get active agents and make ALL of them respond in sequence to the video
+        from state_manager import load_state
+        state = load_state()
+        active = state.get("active_agents", ["Alex", "Maya", "Jordan", "Sam", "Casete"])
+        # Filter out Casete (event-triggered only) and pick 2-3 to respond
+        speakers = [a for a in active if a in ["Alex", "Maya", "Jordan", "Sam"]][:3]
+        
+        for idx, agent_name in enumerate(speakers):
+            if idx > 0:
+                await asyncio.sleep(2.0)  # pause between speakers
+            
+            text = await generate_agent_reply(conversation_history, agent_name, vaclav_recent=True)
+            await asyncio.sleep(calculate_delay(text))
+            await send_agent_message(ctx.channel, agent_name, text, user_id=str(ctx.author.id))
+            # Add agent's message to history so the next agent can see it
+            conversation_history.append({
+                "author": agent_name,
+                "agent": agent_name,
+                "content": text,
+                "timestamp": datetime.now().isoformat(),
+                "is_human": False,
+            })
+
+    except ImportError:
+        await ctx.send("❌ Error: `youtube-transcript-api` no instalado. Ejecuta: `pip install youtube-transcript-api`")
+    except Exception as e:
+        await ctx.send(f"❌ Error procesando video: {str(e)[:200]}")
 
 
 @bot.command(name="helpme")
