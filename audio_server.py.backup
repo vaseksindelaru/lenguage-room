@@ -94,13 +94,14 @@ async def broadcast_audio(audio_bytes: bytes, agent_name: str):
 
 
 async def index_handler(request):
-    """Serve the HTML player page."""
-    return web.FileResponse('./audio_player.html')
+    """Entry page: landing con cards de salas."""
+    return web.FileResponse("./entry_page.html")
 
+async def chat_handler(request):
+    """Sala de conversación (la GUI existente)."""
+    return web.FileResponse("./audio_player.html")
 
 async def health_handler(request):
-    return web.json_response({"status": "ok", "clients": len(connected_clients)})
-
 
 async def broadcast_audio_http(request):
     """HTTP endpoint for bot to send audio to browsers."""
@@ -597,6 +598,7 @@ async def start_audio_server():
     app.router.add_get('/ws', websocket_handler)
     app.router.add_get('/', index_handler)
     app.router.add_get('/health', health_handler)
+    app.router.add_get('/chat', chat_handler)
     
     # Add CORS to all routes
     for route in list(app.router.routes()):
@@ -642,24 +644,6 @@ async def start_audio_server():
     cors.add(p_post_route)
     cors.add(a_get_route)
     cors.add(a_post_route)
-
-    # News Room API
-    news_briefing_route = app.router.add_get('/api/news/briefing', news_briefing_handler)
-    news_refresh_route = app.router.add_post('/api/news/refresh', news_refresh_handler)
-    cors.add(news_briefing_route)
-    cors.add(news_refresh_route)
-
-    # Assistant API
-    assistant_chat_route = app.router.add_post('/api/assistant/chat', assistant_chat_handler)
-    cors.add(assistant_chat_route)
-
-    # Entry/Page Routes
-    entry_route = app.router.add_get('/', index_handler)
-    chat_route = app.router.add_get('/chat', chat_handler)
-    assistant_route = app.router.add_get('/assistant', lambda r: web.FileResponse("./assistant_page.html"))
-    news_route = app.router.add_get('/news', lambda r: web.FileResponse("./news_page.html"))
-    rooms_route = app.router.add_get('/api/rooms', rooms_get_handler)
-    cors.add(rooms_route)
     
     runner = web.AppRunner(app)
     await runner.setup()

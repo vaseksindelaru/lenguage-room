@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎧 KRK-9 — Salas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding: 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+  h1 { color: #5865f2; font-size: 1.5rem; }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1000px; }
+  .card { background: #16213e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; cursor: pointer; transition: all .2s; }
+  .card:hover { border-color: #5865f2; transform: translateY(-2px); }
+  .card.disabled { opacity: .4; cursor: not-allowed; }
+  .card .emoji { font-size: 2rem; margin-bottom: 12px; }
+  .card h2 { font-size: 1.1rem; margin-bottom: 8px; }
+  .card p { font-size: .85rem; color: #999; }
+  #assistant-fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
+    background: #5865f2; border: none; font-size: 1.6rem; cursor: pointer; z-index: 999; box-shadow: 0 4px 12px rgba(88,101,242,.4); }
+  #assistant-fab:hover { background: #4752c4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎧 KRK-9</h1>
+  <span id="user">Vaclav</span>
+</header>
+
+<div class="rooms" id="rooms"></div>
+
+<button id="assistant-fab" title="Asistente KRK-9" onclick="location.href='/assistant'">🤖</button>
+
+<script>
+const USER_ID = 'legacy_vaclav';
+const ROOM_ICONS = { conversation: '💬', news: '📰', assistant: '🤖', custom: '🛠' };
+const ROOM_ROUTES = { conversation: '/chat', news: '/news', assistant: '/assistant' };
+
+async function load() {
+  const r = await fetch(`/api/rooms?user_id=${USER_ID}`);
+  const data = await r.json();
+  const grid = document.getElementById('rooms');
+  grid.innerHTML = '';
+  for (const room of data.rooms) {
+    const div = document.createElement('div');
+    div.className = 'card' + (room.enabled === false ? ' disabled' : '');
+    div.innerHTML = `<div class="emoji">${ROOM_ICONS[room.type] || '🛠'}</div>
+                     <h2>${room.name}</h2><p>${room.type}</p>`;
+    if (room.enabled !== false && ROOM_ROUTES[room.type]) {
+      div.onclick = () => location.href = ROOM_ROUTES[room.type];
+    }
+    document.getElementById('rooms').appendChild(div);
+  }
+}
+load();
+</script>
+</body>
+</html>
