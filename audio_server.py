@@ -94,13 +94,15 @@ async def broadcast_audio(audio_bytes: bytes, agent_name: str):
 
 
 async def index_handler(request):
-    """Serve the HTML player page."""
-    return web.FileResponse('./audio_player.html')
+    """Entry page: landing con cards de salas."""
+    return web.FileResponse("./entry_page.html")
 
+async def chat_handler(request):
+    """Sala de conversación (la GUI existente)."""
+    return web.FileResponse("./audio_player.html")
 
 async def health_handler(request):
     return web.json_response({"status": "ok", "clients": len(connected_clients)})
-
 
 async def broadcast_audio_http(request):
     """HTTP endpoint for bot to send audio to browsers."""
@@ -570,6 +572,54 @@ async def active_agents_post_handler(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
+
+# ─── News Room API Handlers ─────────────────────────────────────────────────
+async def news_briefing_handler(request):
+    """GET /api/news/briefing?user_id=<uid> — último briefing (o genera si no hay de hoy)."""
+    from state_manager import load_state
+    uid = request.query.get("user_id", "legacy_vaclav")
+    state = load_state()
+    history = state.get("users", {}).get(uid, {}).get("news_history", [])
+    today = datetime.now().strftime("%Y-%m-%d")
+    if history and history[0]["date"].startswith(today):
+        return web.json_response({"briefing": history[0]["markdown"], "cached": True})
+    return web.json_response({"briefing": None, "cached": False, "message": "No hay briefing de hoy. Usa POST /api/news/refresh."})
+
+async def news_refresh_handler(request):
+    """POST /api/news/refresh {user_id} — genera briefing ahora."""
+    try:
+        body = await request.json()
+        uid = body.get("user_id", "legacy_vaclav")
+        from news_room import generate_briefing
+        md = await generate_briefing(uid)
+        return web.json_response({"status": "ok", "briefing": md})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+# ─── Assistant API Handlers ─────────────────────────────────────────────────
+async def assistant_chat_handler(request):
+    """POST /api/assistant/chat {user_id, message}"""
+    try:
+        body = await request.json()
+        uid = body.get("user_id", "legacy_vaclav")
+        message = (body.get("message") or "").strip()
+        if not message:
+            return web.json_response({"error": "message required"}, status=400)
+        from krk9_assistant import assistant_reply
+        reply = await assistant_reply(uid, message)
+        return web.json_response({"reply": reply})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+# ─── Entry/Page Routes Handlers ─────────────────────────────────────────────
+async def rooms_get_handler(request):
+    """GET /api/rooms?user_id=<uid> — lista salas del usuario."""
+    from state_manager import load_state, get_user_rooms
+    uid = request.query.get("user_id", "legacy_vaclav")
+    state = load_state()
+    rooms = get_user_rooms(state, uid)
+    return web.json_response({"user_id": uid, "rooms": rooms})
+
 # ─── Server Setup ──────────────────────────────────────────────────────────
 async def start_audio_server():
     """Start the aiohttp server."""
@@ -597,6 +647,7 @@ async def start_audio_server():
     app.router.add_get('/ws', websocket_handler)
     app.router.add_get('/', index_handler)
     app.router.add_get('/health', health_handler)
+    app.router.add_get('/chat', chat_handler)
     
     # Add CORS to all routes
     for route in list(app.router.routes()):
@@ -643,24 +694,24 @@ async def start_audio_server():
     cors.add(a_get_route)
     cors.add(a_post_route)
 
-    # News Room API
+    # ─── News Room API ────────────────────────────────────────────────
     news_briefing_route = app.router.add_get('/api/news/briefing', news_briefing_handler)
     news_refresh_route = app.router.add_post('/api/news/refresh', news_refresh_handler)
     cors.add(news_briefing_route)
     cors.add(news_refresh_route)
 
-    # Assistant API
+    # ─── Assistant API ────────────────────────────────────────────────
     assistant_chat_route = app.router.add_post('/api/assistant/chat', assistant_chat_handler)
     cors.add(assistant_chat_route)
 
-    # Entry/Page Routes
-    entry_route = app.router.add_get('/', index_handler)
-    chat_route = app.router.add_get('/chat', chat_handler)
+    # ─── Entry/Page Routes (nuevas páginas) ──────────────────────────
     assistant_route = app.router.add_get('/assistant', lambda r: web.FileResponse("./assistant_page.html"))
     news_route = app.router.add_get('/news', lambda r: web.FileResponse("./news_page.html"))
     rooms_route = app.router.add_get('/api/rooms', rooms_get_handler)
+    cors.add(assistant_route)
+    cors.add(news_route)
     cors.add(rooms_route)
-    
+
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 8081)
@@ -672,8 +723,6 @@ async def start_audio_server():
     print("   Personas:  http://localhost:8081/api/personas")
     print("   TTS Prev:  http://localhost:8081/api/tts-preview")
     return runner
-
-
 # For direct import by bot.py
 audio_server_runner = None
 
