@@ -59,18 +59,9 @@
         .speaking-indicator { height: 4px; background: #5865f2; border-radius: 2px; margin-top: 8px; transform: scaleX(0); transition: transform 0.15s ease-out; }
         .agent-card.active .speaking-indicator { transform: scaleX(1); }
         
-        .participants-panel {
-            background: rgba(17, 26, 48, 0.6); backdrop-filter: blur(10px);
-            border: 1px solid rgba(88,101,242,0.2); border-radius: 12px;
-            padding: 12px 20px; margin-bottom: 20px;
-            display: flex; align-items: center; justify-content: center; gap: 16px;
-            width: 100%; max-width: 600px;
-        }
-        .participants-panel h3 { font-size: 0.9rem; color: #aaa; font-weight: 500; }
-        .bot-checkboxes { display: flex; gap: 10px; flex-wrap: wrap; }
         .btn-participant {
             background: rgba(0,0,0,0.3); border: 1px solid #2a2a4a;
-            color: #888; padding: 6px 14px; border-radius: 20px;
+            color: #888; padding: 8px 16px; border-radius: 20px;
             font-size: 0.85rem; font-weight: 500; cursor: pointer;
             transition: all 0.2s; display: flex; align-items: center; gap: 6px;
         }
@@ -185,22 +176,7 @@
         #audioBanner .title { font-size: 1.8rem; font-weight: 700; }
         #audioBanner .subtitle { font-size: 1rem; color: #aaa; max-width: 500px; line-height: 1.5; }
 
-        /* ─── Settings Button & Modal ──────────────────────────── */
-        #settingsBtn {
-            position: fixed; top: 18px; right: 18px; z-index: 1000;
-            width: 46px; height: 46px; border-radius: 50%;
-            background: #16213e; border: 1px solid #2a2a4a;
-            font-size: 1.4rem; cursor: pointer; color: #ccc;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.25s ease;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-        }
-        #settingsBtn:hover {
-            background: #1e2a4a; border-color: #5865f2; color: #fff;
-            transform: rotate(45deg);
-            box-shadow: 0 4px 20px rgba(88,101,242,0.4);
-        }
-
+        /* ─── Modal ──────────────────────────── */
         .modal-overlay {
             display: none; position: fixed; inset: 0; z-index: 5000;
             background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
@@ -369,7 +345,6 @@
         /* Responsive */
         @media (max-width: 600px) {
             .agents-grid { justify-content: flex-start; }
-            .participants-panel { flex-direction: column; text-align: center; }
             .agent-editor-top { flex-direction: column; align-items: stretch; }
             .emoji-display { width: 100%; height: 56px; font-size: 2rem; }
             .modal-tabs { gap: 0; }
@@ -390,8 +365,16 @@
             <a href="/chat" class="active">💬 Practice</a>
             <a href="/news">📰 Briefing</a>
             <a href="/assistant">🤖 Assistant</a>
+            <a href="#" onclick="openHistoryModal();return false;" title="Historial y Sesiones">📜</a>
+            <a href="#" onclick="openSettings();return false;" title="Configuraciones">⚙️</a>
         </div>
     </nav>
+
+    <!-- ─── Page Header ──────────────────────────────── -->
+    <header style="max-width:700px; margin:20px auto 0; padding:0 16px; text-align:center;">
+        <h1 style="color:#5865f2; font-size:1.5rem; margin-bottom:4px;">💬 English Practice</h1>
+        <p style="color:#888; font-size:.85rem;">Conversación en vivo con agentes — presiona 🎤 para hablar</p>
+    </header>
 
     <!-- Audio activation banner (required by browser autoplay policy) -->
     <div id="audioBanner">
@@ -401,12 +384,6 @@
             Los navegadores requieren un clic del usuario antes de reproducir audio.<br>
             Haz clic en cualquier parte de esta pantalla para continuar.
         </div>
-    </div>
-
-    <!-- Settings button (floating) -->
-    <div class="header-buttons" style="position:fixed; top:18px; right:18px; display:flex; gap:12px; z-index:1000;">
-        <button id="historyBtn" title="Historial y Sesiones" aria-label="Historial" onclick="openHistoryModal()" style="width:46px; height:46px; border-radius:50%; background:#16213e; border:1px solid #2a2a4a; font-size:1.4rem; cursor:pointer; color:#ccc; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 12px rgba(0,0,0,0.4);">📜</button>
-        <button id="settingsBtn" title="Settings" aria-label="Open settings" style="position:static;">⚙️</button>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -426,13 +403,6 @@
     </div>
 
     <div id="status" class="status connecting">🔄 Conectando...</div>
-
-    <div class="participants-panel">
-        <h3>Participants:</h3>
-        <div class="bot-checkboxes" id="participantsList">
-            <!-- Rendered by JS -->
-        </div>
-    </div>
 
     <div class="agents-grid" id="agentsGrid">
         <div class="agent-card" id="card-Alex">
@@ -940,6 +910,15 @@
                 tab.addEventListener('click', () => switchTab(name));
                 tabsEl.appendChild(tab);
             }
+            // Participants tab
+            const pTab = document.createElement('button');
+            pTab.className = 'modal-tab';
+            pTab.setAttribute('role', 'tab');
+            pTab.setAttribute('aria-label', 'Participants');
+            pTab.dataset.agent = '__participants__';
+            pTab.textContent = '👥 Participants';
+            pTab.addEventListener('click', () => switchTab('__participants__'));
+            tabsEl.appendChild(pTab);
         }
 
         function switchTab(name) {
@@ -949,7 +928,47 @@
                 t.classList.toggle('active', t.dataset.agent === name);
             });
             // Render panel
-            renderPanel(name);
+            if (name === '__participants__') {
+                renderParticipantsPanel();
+            } else {
+                renderPanel(name);
+            }
+        }
+
+        // ─── Render Participants Panel ─────────────────
+        function renderParticipantsPanel() {
+            const body = document.getElementById('modalBody');
+            const allAgents = ['Alex', 'Maya', 'Jordan', 'Sam', 'Casete'];
+            body.innerHTML = `
+                <div class="tab-panel active" id="panel-participants">
+                    <h3 style="color:#ccc; margin-bottom:12px;">Select which agents participate in the conversation</h3>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+                        ${allAgents.map(a => {
+                            const isSelected = activeAgents.includes(a);
+                            const emoji = settingsData[a]?.emoji || '';
+                            return `<button class="btn-participant ${isSelected ? 'selected' : ''}" onclick="toggleParticipantInSettings('${a}')">${isSelected ? '☑' : '☐'} ${emoji} ${a}</button>`;
+                        }).join('')}
+                    </div>
+                    <p style="font-size:.8rem; color:#888;">Disabled agents won't speak or appear in the conversation.</p>
+                </div>
+            `;
+        }
+
+        async function toggleParticipantInSettings(name) {
+            if (activeAgents.includes(name)) {
+                activeAgents = activeAgents.filter(a => a !== name);
+            } else {
+                activeAgents.push(name);
+            }
+            renderParticipantsPanel();
+            updateCardsOpacity();
+            try {
+                await fetch('/api/active-agents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active_agents: activeAgents })
+                });
+            } catch (e) { showToast("Failed to save participants", true); }
         }
 
         // ─── Render Agent Panel ────────────────────────
@@ -1341,8 +1360,8 @@ ${tableRows}
             }
         }
 
-        // ─── Event Listeners ───────────────────────────        // Initialize settings panel data logic
-        document.getElementById('settingsBtn').addEventListener('click', openSettings);
+        // ─── Event Listeners ───────────────────────────
+        // Settings & History now triggered from nav bar onclick, no separate listeners needed
         
         // ─── F11 Casete tabs logic ─────────────
         function switchVoiceTab(provider, name) {
@@ -1444,37 +1463,8 @@ ${tableRows}
                 if (data.active_agents) {
                     activeAgents = data.active_agents;
                 }
-                renderParticipants();
                 updateCardsOpacity();
             } catch (e) { console.warn("Failed to load active agents", e); }
-        }
-
-        function renderParticipants() {
-            const list = document.getElementById('participantsList');
-            if (!list) return;
-            const allAgents = ['Alex', 'Maya', 'Jordan', 'Sam', 'Casete'];
-            list.innerHTML = allAgents.map(a => {
-                const isSelected = activeAgents.includes(a);
-                return `<button class="btn-participant ${isSelected ? 'selected' : ''}" onclick="toggleParticipant('${a}')">${isSelected ? '☑' : '☐'} ${a}</button>`;
-            }).join('');
-        }
-
-        async function toggleParticipant(name) {
-            if (activeAgents.includes(name)) {
-                activeAgents = activeAgents.filter(a => a !== name);
-            } else {
-                activeAgents.push(name);
-            }
-            renderParticipants();
-            updateCardsOpacity();
-            
-            try {
-                await fetch('/api/active-agents', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ active_agents: activeAgents })
-                });
-            } catch (e) { showToast("Failed to save participants", true); }
         }
         
         function updateCardsOpacity() {
