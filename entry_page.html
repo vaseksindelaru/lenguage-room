@@ -7,25 +7,62 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding: 24px; }
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+  body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding-top: 56px; }
+  /* ─── Top Nav Bar ─────────────────────── */
+  .top-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1001;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: rgba(22,33,62,0.85);
+      backdrop-filter: blur(12px); border-bottom: 1px solid #2a2a4a;
+  }
+  .top-nav a { color: #ccc; text-decoration: none; font-size: .9rem; font-weight: 600;
+      padding: 6px 14px; border-radius: 8px; transition: all .15s; }
+  .top-nav a:hover { background: rgba(88,101,242,0.15); color: #5865f2; }
+  .top-nav a.active { background: rgba(88,101,242,0.2); color: #5865f2; border-bottom: 2px solid #5865f2; }
+  .top-nav .brand { color: #5865f2; font-size: 1.1rem; font-weight: 700; }
+  .top-nav .nav-links { display: flex; gap: 6px; align-items: center; }
+
+  header { display: flex; justify-content: space-between; align-items: center; margin: 24px 24px 32px; }
   h1 { color: #5865f2; font-size: 1.5rem; }
-  .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1000px; }
-  .card { background: #16213e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; cursor: pointer; transition: all .2s; }
-  .card:hover { border-color: #5865f2; transform: translateY(-2px); }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1000px; padding: 0 24px; }
+  .card {
+      background: rgba(22,33,62,0.7); backdrop-filter: blur(8px);
+      border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px;
+      cursor: pointer; transition: all .25s cubic-bezier(0.25,0.8,0.25,1);
+      position: relative; overflow: hidden;
+  }
+  .card:hover { border-color: #5865f2; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(88,101,242,0.2); }
   .card.disabled { opacity: .4; cursor: not-allowed; }
+  .card.disabled:hover { transform: none; box-shadow: none; border-color: #2a2a4a; }
   .card .emoji { font-size: 2rem; margin-bottom: 12px; }
-  .card h2 { font-size: 1.1rem; margin-bottom: 8px; }
+  .card h2 { font-size: 1.1rem; margin-bottom: 8px; color: #fff; }
   .card p { font-size: .85rem; color: #999; }
   #assistant-fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
     background: #5865f2; border: none; font-size: 1.6rem; cursor: pointer; z-index: 999; box-shadow: 0 4px 12px rgba(88,101,242,.4); }
   #assistant-fab:hover { background: #4752c4; }
+
+  @media (max-width: 600px) {
+      .top-nav .nav-links { gap: 2px; }
+      .top-nav a { font-size: .75rem; padding: 4px 8px; }
+      .rooms { padding: 0 12px; }
+  }
 </style>
 </head>
 <body>
+<!-- ─── Top Navigation Bar ─────────────────────── -->
+<nav class="top-nav">
+    <a href="/" class="brand">🎧 KRK-9</a>
+    <div class="nav-links">
+        <a href="/" class="active">🏠 Salas</a>
+        <a href="/chat">💬 Practice</a>
+        <a href="/news">📰 Briefing</a>
+        <a href="/assistant">🤖 Assistant</a>
+    </div>
+</nav>
+
 <header>
   <h1>🎧 KRK-9</h1>
-  <span id="user">Vaclav</span>
+  <span id="user" style="color:#888;">Vaclav</span>
 </header>
 
 <div class="rooms" id="rooms"></div>
@@ -45,8 +82,9 @@ async function load() {
   for (const room of data.rooms) {
     const div = document.createElement('div');
     div.className = 'card' + (room.enabled === false ? ' disabled' : '');
+    const desc = room.type === 'news' ? (room.config?.sources?.map(s=>s.name).join(', ') || 'RSS') : room.type;
     div.innerHTML = `<div class="emoji">${ROOM_ICONS[room.type] || '🛠'}</div>
-                     <h2>${room.name}</h2><p>${room.type}</p>`;
+                     <h2>${room.name}</h2><p>${desc}</p>`;
     if (room.enabled !== false && ROOM_ROUTES[room.type]) {
       div.onclick = () => location.href = ROOM_ROUTES[room.type];
     }

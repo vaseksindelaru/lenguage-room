@@ -15,6 +15,9 @@ logger = logging.getLogger("state_manager")
 
 STATE_DIR = Path.home() / ".english-bot"
 STATE_PATH = STATE_DIR / "state.json"
+PERSONAS_PATH = Path(__file__).parent / "personas.json"
+VALID_AGENTS = {"Alex", "Maya", "Jordan", "Sam", "Casete"}
+VALID_FIELDS = {"persona", "voice", "emoji", "llm_provider", "llm_model"}
 MAX_HISTORY = 50
 
 DEFAULT_ASSISTANT_CONFIG = {

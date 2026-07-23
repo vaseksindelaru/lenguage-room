@@ -3,33 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📰 Morning Briefing</title>
+<title>📰 KRK-9 — Morning Briefing</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
- body{font-family:'Inter',sans-serif;background:#1a1a2e;color:#eee;padding:24px;max-width:800px;margin:auto}
- h1{color:#5865f2;font-size:1.4rem;margin-bottom:16px}
- #briefing{background:#16213e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;line-height:1.6;white-space:pre-wrap}
- button{background:#5865f2;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-weight:600;margin:8px 8px 16px 0}
- a{color:#8ea1e1}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding-top: 56px; display: flex; flex-direction: column; }
+  /* ─── Top Nav Bar ─────────────────────── */
+  .top-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1001;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: rgba(22,33,62,0.85);
+      backdrop-filter: blur(12px); border-bottom: 1px solid #2a2a4a;
+  }
+  .top-nav a { color: #ccc; text-decoration: none; font-size: .9rem; font-weight: 600;
+      padding: 6px 14px; border-radius: 8px; transition: all .15s; }
+  .top-nav a:hover { background: rgba(88,101,242,0.15); color: #5865f2; }
+  .top-nav a.active { background: rgba(88,101,242,0.2); color: #5865f2; border-bottom: 2px solid #5865f2; }
+  .top-nav .brand { color: #5865f2; font-size: 1.1rem; font-weight: 700; }
+  .top-nav .nav-links { display: flex; gap: 6px; align-items: center; }
+
+  /* ─── Content ────────────────────────────── */
+  .container { max-width: 800px; margin: 24px auto; padding: 0 20px; flex: 1; }
+  h1 { color: #5865f2; font-size: 1.5rem; margin-bottom: 8px; }
+  .subtitle { color: #888; font-size: .85rem; margin-bottom: 24px; }
+
+  .briefing-card {
+      background: rgba(22,33,62,0.7); backdrop-filter: blur(8px);
+      border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px;
+      margin-bottom: 16px; position: relative;
+  }
+  .briefing-card h2 { color: #fff; font-size: 1.1rem; margin-bottom: 12px; }
+  .briefing-card .markdown { color: #ccc; font-size: .9rem; line-height: 1.6; white-space: pre-wrap; }
+  .briefing-card .timestamp { color: #666; font-size: .75rem; margin-top: 12px; text-align: right; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #666; }
+  .empty-state .icon { font-size: 4rem; margin-bottom: 16px; }
+
+  .controls { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  button {
+      padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
+      cursor: pointer; transition: all .15s; font-size: .9rem;
+  }
+  .btn-primary { background: #5865f2; color: #fff; }
+  .btn-primary:hover { background: #4752c4; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-secondary { background: #2a2a4a; color: #ccc; }
+  .btn-secondary:hover { background: #3a3a5a; color: #fff; }
+
+  .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1e3a5f; border: 1px solid #5865f2; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem;
+      z-index: 8000; opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #3a1e1e; border-color: #ed4245; }
+
+  @media (max-width: 600px) {
+      .top-nav .nav-links { gap: 2px; }
+      .top-nav a { font-size: .75rem; padding: 4px 8px; }
+      .container { padding: 0 12px; }
+  }
 </style>
-</head><body>
-<h1>📰 Morning Briefing</h1>
-<button onclick="refreshBriefing()">🔄 Generar ahora</button>
-<button onclick="location.href='/'">← Salas</button>
-<div id="briefing">Cargando…</div>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<!-- ─── Top Navigation Bar ─────────────────────── -->
+<nav class="top-nav">
+    <a href="/" class="brand">🎧 KRK-9</a>
+    <div class="nav-links">
+        <a href="/">🏠 Salas</a>
+        <a href="/chat">💬 Practice</a>
+        <a href="/news" class="active">📰 Briefing</a>
+        <a href="/assistant">🤖 Assistant</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>📰 Morning Briefing</h1>
+    <p class="subtitle">Resumen diario de noticias en inglés — práctica de lectura y escucha</p>
+
+    <div class="controls">
+        <button class="btn-primary" id="btnRefresh" onclick="refreshBriefing()">🔄 Generar briefing</button>
+        <button class="btn-secondary" id="btnRead" onclick="readBriefing()" disabled>🔊 Leer en voz alta</button>
+    </div>
+
+    <div id="briefingContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
 const USER_ID = 'legacy_vaclav';
-async function loadBriefing(){
-  const r = await fetch(`/api/news/briefing?user_id=${USER_ID}`);
-  const d = await r.json();
-  document.getElementById('briefing').innerHTML = d.briefing ? marked.parse(d.briefing) : '<p>No hay briefing de hoy. Pulsa "Generar ahora".</p>';
+
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 3000);
 }
-async function refreshBriefing(){
-  document.getElementById('briefing').textContent = '⏳ Generando (puede tardar 30-60s)…';
-  const r = await fetch('/api/news/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:USER_ID})});
-  const d = await r.json();
-  document.getElementById('briefing').innerHTML = d.briefing ? marked.parse(d.briefing) : '❌ ' + (d.error||'error');
+
+async function loadBriefing() {
+    const content = document.getElementById('briefingContent');
+    content.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Cargando briefing...</p></div>';
+    try {
+        const r = await fetch(`/api/news/briefing?user_id=${USER_ID}`);
+        const data = await r.json();
+        if (data.briefing) {
+            content.innerHTML = `<div class="briefing-card">
+                <h2>📰 Briefing del día</h2>
+                <div class="markdown">${data.briefing}</div>
+                <div class="timestamp">${data.cached ? '📌 Cacheado' : '🆕 Generado ahora'}</div>
+            </div>`;
+            document.getElementById('btnRead').disabled = false;
+        } else {
+            content.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No hay briefing de hoy.</p><p style="margin-top:8px;font-size:.8rem;color:#888;">Haz clic en "Generar briefing" para crear uno.</p></div>';
+            document.getElementById('btnRead').disabled = true;
+        }
+    } catch (e) {
+        content.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Error cargando briefing</p></div>`;
+        showToast('Error: ' + e.message, true);
+    }
 }
+
+async function refreshBriefing() {
+    const btn = document.getElementById('btnRefresh');
+    btn.disabled = true; btn.textContent = '⏳ Generando...';
+    try {
+        const r = await fetch('/api/news/refresh', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID })
+        });
+        const data = await r.json();
+        if (data.briefing) {
+            document.getElementById('briefingContent').innerHTML = `<div class="briefing-card">
+                <h2>📰 Briefing del día</h2>
+                <div class="markdown">${data.briefing}</div>
+                <div class="timestamp">🆕 Generado ahora</div>
+            </div>`;
+            document.getElementById('btnRead').disabled = false;
+            showToast('✅ Briefing generado');
+        } else {
+            showToast('❌ ' + (data.error || 'Error generando briefing'), true);
+        }
+    } catch (e) {
+        showToast('❌ ' + e.message, true);
+    } finally {
+        btn.disabled = false; btn.textContent = '🔄 Generar briefing';
+    }
+}
+
+function readBriefing() {
+    const text = document.querySelector('.briefing-card .markdown')?.textContent;
+    if (!text) return;
+    const u = new SpeechSynthesisUtterance(text.slice(0, 4000));
+    u.lang = 'en-US'; u.rate = 0.9;
+    speechSynthesis.speak(u);
+}
+
 loadBriefing();
-</script></body></html>
+</script>
+</body>
+</html>
