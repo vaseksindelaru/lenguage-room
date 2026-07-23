@@ -17,7 +17,36 @@ STATE_DIR = Path.home() / ".english-bot"
 STATE_PATH = STATE_DIR / "state.json"
 MAX_HISTORY = 50
 
+DEFAULT_ASSISTANT_CONFIG = {
+    "enabled": True,
+    "voice_mode": "ptt",          # "ptt" | "off"  (vad = fase opcional, NO ahora)
+    "language": "en-US",
+    "max_tokens": 400,
+    "interruptible": True,
+}
+
+DEFAULT_NEWS_CONFIG = {
+    "enabled": True,
+    "update_hour": 4,             # 4am
+    "timezone": "local",          # hora local del servidor
+    "sources": [
+        {"id": "hn",   "type": "rss", "name": "Hacker News", "url": "https://hnrss.org/frontpage", "enabled": True},
+        {"id": "arstechnica-ai", "type": "rss", "name": "Ars Technica AI", "url": "https://feeds.arstechnica.com/arstechnica/technology-lab", "enabled": True},
+    ],
+    "max_items": 6,
+    "last_run_date": None,        # "YYYY-MM-DD" cuando corrió por última vez
+}
+
+def default_rooms() -> list:
+    """Salas por defecto de un usuario nuevo o migrado."""
+    return [
+        {"id": "conversation", "type": "conversation", "name": "English Practice", "enabled": True},
+        {"id": "news",         "type": "news",         "name": "Morning Briefing", "enabled": True,
+         "config": dict(DEFAULT_NEWS_CONFIG)},
+    ]
+
 DEFAULT_STATE = {
+    "version": 3,
     "conversation_history": [],
     "current_topic_index": 0,
     "custom_topic": None,
@@ -56,6 +85,9 @@ def load_state() -> Dict[str, Any]:
         
         # ─── MIGRACIÓN v1→v2 ───
         state = migrate_state_v1_to_v2(state)
+        
+        # ─── MIGRACIÓN v2→v3 ───
+        state = migrate_state_v2_to_v3(state)
         
         return state
     except (json.JSONDecodeError, OSError):
@@ -168,13 +200,60 @@ def migrate_state_v1_to_v2(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 
-# ─── Personas Persistence ──────────────────────────────────────────────────
-# DEFAULT_PERSONAS: copied from bot.py AGENTS + AGENT_PERSONAS to avoid
-# circular imports (state_manager ↔ bot). Keep in sync manually.
+# ─── State migration v2 → v3 ──────────────────────────────────────────────────
 
-PERSONAS_PATH = Path(__file__).parent / "personas.json"
-VALID_AGENTS = {"Alex", "Maya", "Jordan", "Sam", "Casete"}
-VALID_FIELDS = {"persona", "voice", "emoji", "llm_provider", "llm_model"}
+def migrate_state_v2_to_v3(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Añade rooms[] y assistant_config a cada usuario. Idempotente."""
+    if state.get("version", 1) >= 3:
+        return state
+
+    state["version"] = 3
+    for uid, user in state.setdefault("users", {}).items():
+        user.setdefault("rooms", default_rooms())
+        user.setdefault("assistant_config", dict(DEFAULT_ASSISTANT_CONFIG))
+        user.setdefault("news_queue", [])
+        user.setdefault("news_history", [])
+    logger.info("🔄 Migrated state v2 → v3 (rooms + assistant_config)")
+    return state
+
+
+# ─── Helper functions for rooms/assistant/news ────────────────────────────────
+
+def get_user_rooms(state: Dict[str, Any], uid: str) -> list:
+    return state.get("users", {}).get(uid, {}).get("rooms", [])
+
+def set_active_room(state: Dict[str, Any], uid: str, room_id: str) -> bool:
+    user = state.get("users", {}).get(uid, {})
+    if any(r.get("id") == room_id for r in user.get("rooms", [])):
+        user["active_room"] = room_id
+        return True
+    return False
+
+def get_assistant_config(state: Dict[str, Any], uid: str) -> Dict[str, Any]:
+    cfg = state.get("users", {}).get(uid, {}).get("assistant_config", {})
+    out = dict(DEFAULT_ASSISTANT_CONFIG)
+    out.update(cfg)
+    return out
+
+def get_news_config(state: Dict[str, Any], uid: str) -> Dict[str, Any]:
+    """Config de la sala 'news' del usuario (o defaults si no existe)."""
+    for r in get_user_rooms(state, uid):
+        if r.get("type") == "news":
+            cfg = dict(DEFAULT_NEWS_CONFIG)
+            cfg.update(r.get("config", {}))
+            return cfg
+    return dict(DEFAULT_NEWS_CONFIG)
+
+def save_news_config(state: Dict[str, Any], uid: str, new_config: Dict[str, Any]) -> bool:
+    user = state.get("users", {}).get(uid, {})
+    for r in user.get("rooms", []):
+        if r.get("type") == "news":
+            r.setdefault("config", {}).update(new_config)
+            return True
+    return False
+
+
+# ─── Personas Persistence ──────────────────────────────────────────────────
 
 _personas_lock = threading.Lock()
 
