@@ -323,13 +323,24 @@ def get_assistant_config(state: Dict[str, Any], uid: str) -> Dict[str, Any]:
     return out
 
 def get_news_config(state: Dict[str, Any], uid: str) -> Dict[str, Any]:
-    """Config de la sala 'news' del usuario (o defaults si no existe)."""
-    for r in get_user_rooms(state, uid):
+    """Config de la sala 'news' del usuario (o defaults si no existe).
+    Hace deep merge para que las nuevas claves (scheduling, agent, etc.) aparezcan."""
+    user = state.get("users", {}).get(uid, {})
+    for r in user.get("rooms", []):
         if r.get("type") == "news":
-            cfg = dict(DEFAULT_NEWS_CONFIG)
-            cfg.update(r.get("config", {}))
+            saved = r.get("config", {})
+            cfg = json.loads(json.dumps(DEFAULT_NEWS_CONFIG))
+            _deep_merge(cfg, saved)
             return cfg
-    return dict(DEFAULT_NEWS_CONFIG)
+    return json.loads(json.dumps(DEFAULT_NEWS_CONFIG))
+
+def _deep_merge(base: dict, override: dict) -> None:
+    """Merge override into base in-place. New keys from override are added."""
+    for key, value in override.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
 
 def save_news_config(state: Dict[str, Any], uid: str, new_config: Dict[str, Any]) -> bool:
     user = state.get("users", {}).get(uid, {})
