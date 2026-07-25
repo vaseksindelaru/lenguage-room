@@ -334,13 +334,16 @@ def get_news_config(state: Dict[str, Any], uid: str) -> Dict[str, Any]:
             return cfg
     return json.loads(json.dumps(DEFAULT_NEWS_CONFIG))
 
-def _deep_merge(base: dict, override: dict) -> None:
-    """Merge override into base in-place. New keys from override are added."""
-    for key, value in override.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            _deep_merge(base[key], value)
+def _deep_merge(default: dict, saved: dict) -> None:
+    """Merge saved config into default, keeping only keys that exist in DEFAULT.
+    This ignores legacy/unknown keys from old saved configs."""
+    for key, value in saved.items():
+        if key not in default:
+            continue  # ignore legacy keys (e.g., flat update_hour)
+        if isinstance(default[key], dict) and isinstance(value, dict):
+            _deep_merge(default[key], value)
         else:
-            base[key] = value
+            default[key] = value
 
 def save_news_config(state: Dict[str, Any], uid: str, new_config: Dict[str, Any]) -> bool:
     user = state.get("users", {}).get(uid, {})
