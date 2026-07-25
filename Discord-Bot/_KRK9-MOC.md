@@ -41,3 +41,10 @@ Cualquiera puede instalarlo vía Hermes.
 
 ## ⏭️ Pendientes
 - [ ] Probar en Discord (`./start.sh` + `!speak`) que la GUI aplica persona/voz/LLM y que `!speak` no duplica (ver sesión 2026-07-20)
+
+## 📊 Graphify Analysis
+- **Analysis date**: 2026-07-25
+- **Project**: lenguage-room unified (Discord-Bot + news_room)
+- **Graph files**: `graphify-out/graph.html` (240KB), `graphify-out/GRAPH_REPORT.md` (143 lines), `graphify-out/graph.json`
+- **Stats**: 272 nodes, 557 edges, 16 communities
+- **Note**: Uses `PYTHONPATH` fix for graphifyy Python 3.13 compatibility
