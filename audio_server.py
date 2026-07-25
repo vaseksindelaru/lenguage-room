@@ -576,6 +576,7 @@ async def active_agents_post_handler(request):
 # ─── News Room API Handlers ─────────────────────────────────────────────────
 async def news_briefing_handler(request):
     """GET /api/news/briefing?user_id=<uid> — último briefing (o genera si no hay de hoy)."""
+    from datetime import datetime
     from state_manager import load_state
     uid = request.query.get("user_id", "legacy_vaclav")
     state = load_state()
