@@ -30,14 +30,98 @@ DEFAULT_ASSISTANT_CONFIG = {
 
 DEFAULT_NEWS_CONFIG = {
     "enabled": True,
-    "update_hour": 4,             # 4am
-    "timezone": "local",          # hora local del servidor
+    "version": 1,
+    # ── Scheduling ──
+    "scheduling": {
+        "update_hour": 4,
+        "frequency": "daily",      # daily | hourly | manual
+        "timezone": "local",
+        "cooldown_minutes": 60,
+        "max_retries": 3,
+        "retry_delay_seconds": 10,
+    },
+    # ── Sources ──
     "sources": [
-        {"id": "hn",   "type": "rss", "name": "Hacker News", "url": "https://hnrss.org/frontpage", "enabled": True},
-        {"id": "arstechnica-ai", "type": "rss", "name": "Ars Technica AI", "url": "https://feeds.arstechnica.com/arstechnica/technology-lab", "enabled": True},
+        {"id": "hn", "name": "Hacker News", "type": "rss",
+         "url": "https://hnrss.org/frontpage", "enabled": True,
+         "max_items_per_source": 5, "keywords_filter": "", "exclude_keywords": "", "language": "en"},
+        {"id": "arstechnica-ai", "name": "Ars Technica AI", "type": "rss",
+         "url": "https://feeds.arstechnica.com/arstechnica/technology-lab", "enabled": True,
+         "max_items_per_source": 5, "keywords_filter": "", "exclude_keywords": "", "language": "en"},
+        {"id": "bbc-news", "name": "BBC News", "type": "rss",
+         "url": "https://feeds.bbci.co.uk/news/rss.xml", "enabled": True,
+         "max_items_per_source": 5, "keywords_filter": "", "exclude_keywords": "", "language": "en"},
+        {"id": "nyt-world", "name": "NYT World", "type": "rss",
+         "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "enabled": True,
+         "max_items_per_source": 5, "keywords_filter": "", "exclude_keywords": "", "language": "en"},
     ],
-    "max_items": 6,
-    "last_run_date": None,        # "YYYY-MM-DD" cuando corrió por última vez
+    # ── AI Agent ──
+    "agent": {
+        "llm_model": "z-ai/glm-5.1",
+        "llm_provider": "openrouter",
+        "system_prompt": (
+            "Eres el agente de recolección de noticias de KRK-9. "
+            "Recopila noticias en inglés de las fuentes indicadas y genera "
+            "un briefing matutino en ESPAÑOL, con tono eficiente y cálido. "
+            "Usa esta estructura markdown exacta:\n"
+            "## 📰 Top News\n(títulos en negrita — fuente, por qué importa)\n"
+            "## ✅ Suggested Tasks\n(3 checkboxes accionables)\n"
+            "## 🗣️ Vocabulary\n(5 palabras nuevas con definición breve)\n"
+            "## 💬 Discussion Questions\n(3 preguntas abiertas)\n"
+            "Noticias de hoy:"
+        ),
+        "temperature": 0.6,
+        "max_tokens": 2000,
+        "summarize_style": "markdown_sections",
+        "target_language": "es",
+        "source_language": "en",
+    },
+    # ── Output ──
+    "output": {
+        "max_briefing_items": 6,
+        "sections": ["top_news", "suggested_tasks", "vocabulary", "discussion_questions", "sources_links"],
+        "include_article_snippets": True,
+        "max_snippet_length": 200,
+        "include_original_links": True,
+    },
+    # ── Caching ──
+    "caching": {
+        "cache_hours": 24,
+        "history_days": 30,
+        "max_history_entries": 30,
+        "persist_to_obsidian": True,
+        "obsidian_folder": "KRK9/Briefings",
+    },
+    # ── Notifications ──
+    "notifications": {
+        "notify_on_briefing_ready": True,
+        "notify_discord_channel": "",
+        "notify_via_tts": False,
+        "tts_voice": "en-US-AndrewNeural",
+        "error_notification": True,
+    },
+    # ── Agentic ──
+    "agentic": {
+        "autonomous_mode": False,
+        "agent_depth": "medium",       # shallow | medium | deep
+        "auto_discovery": False,
+        "dedup_strategy": "title",     # title | link | hash
+        "max_source_age_hours": 48,
+    },
+    # ── Credentials ──
+    "credentials": {
+        "newsapi_key": "",
+        "guardian_api_key": "",
+        "openweather_api_key": "",
+    },
+    # ── Debug ──
+    "debug": {
+        "dry_run": False,
+        "log_level": "INFO",
+        "test_mode": False,
+    },
+    # ── Legacy fields kept for backward compat ──
+    "last_run_date": None,
 }
 
 def default_rooms() -> list:

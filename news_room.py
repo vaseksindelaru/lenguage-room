@@ -26,14 +26,17 @@ async def fetch_rss_items(sources: List[Dict], max_per_source: int = 5) -> List[
             logger.warning(f"⚠️ RSS {src.get('name')} falló: {e}")
     return items
 
-def build_briefing_prompt(items: List[Dict], max_items: int) -> str:
+def build_briefing_prompt(items: List[Dict], max_items: int, agent_cfg: Dict = None) -> str:
+    if agent_cfg is None:
+        agent_cfg = {}
+    llm_model = agent_cfg.get("llm_model", "z-ai/glm-5.1")
+    target_language = agent_cfg.get("target_language", "es")
+    system_prompt = agent_cfg.get("system_prompt", "")
+
     lines = [f"{i+1}. [{it['source']}] {it['title']}\n   {it['summary'][:200]}\n   {it['link']}"
              for i, it in enumerate(items[:max_items])]
     return (
-        "Eres la secretaria ejecutiva de Vaclav. Genera su briefing matutino en INGLÉS, "
-        "tono eficiente y cálido, EXACTAMENTE estas secciones markdown:\n"
-        "## 📰 Top News\n(para cada noticia: **título en negrita** — fuente, y UNA frase de por qué importa)\n"
-        "## ✅ Suggested Tasks\n(3 checkboxes accionables relacionadas con las noticias)\n\n"
+        f"{system_prompt}\n"
         "Noticias de hoy:\n" + "\n\n".join(lines)
     )
 
@@ -44,17 +47,24 @@ async def generate_briefing(uid: str) -> str:
 
     state = load_state()
     cfg = get_news_config(state, uid)
-    items = await fetch_rss_items(cfg.get("sources", []), 5)
+    sources = cfg.get("sources", [])
+    max_items = cfg.get("output", {}).get("max_briefing_items", 6)
+    items = await fetch_rss_items(sources, 5)
 
     if not items:
         md = f"# ☕ Briefing {datetime.now():%Y-%m-%d}\n\n⚠️ No se pudieron descargar noticias hoy."
     else:
-        prompt = build_briefing_prompt(items, cfg.get("max_items", 6))
+        agent_cfg = cfg.get("agent", {})
+        prompt = build_briefing_prompt(items, max_items, agent_cfg)
+        temperature = agent_cfg.get("temperature", 0.6)
         try:
             body = await call_openrouter(
                 [{"role": "user", "content": prompt}],
-                system="You are a precise executive secretary. Output ONLY markdown, no preamble.",
-                temperature=0.6,
+                system=agent_cfg.get("system_prompt",
+                    "You are the news briefing agent for KRK-9. "
+                    "Output ONLY markdown, no preamble."),
+                temperature=temperature,
+                max_tokens=agent_cfg.get("max_tokens", 2000),
             )
         except Exception as e:
             logger.error(f"❌ LLM briefing falló: {e}")
