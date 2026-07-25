@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📰 KRK-9 — News Room Config</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding-top: 56px; }
+
+  /* ─── Top Nav ─────────────────────── */
+  .top-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1001;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: rgba(22,33,62,0.85);
+      backdrop-filter: blur(12px); border-bottom: 1px solid #2a2a4a;
+  }
+  .top-nav a { color: #ccc; text-decoration: none; font-size: .85rem; font-weight: 600;
+      padding: 6px 12px; border-radius: 8px; transition: all .15s; }
+  .top-nav a:hover { background: rgba(88,101,242,0.15); color: #5865f2; }
+  .top-nav a.active { background: rgba(88,101,242,0.2); color: #5865f2; border-bottom: 2px solid #5865f2; }
+  .top-nav .brand { color: #5865f2; font-size: 1rem; font-weight: 700; }
+  .top-nav .nav-links { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+
+  /* ─── Layout ──────────────────────── */
+  .container { max-width: 960px; margin: 20px auto; padding: 0 16px; }
+  h1 { color: #5865f2; font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: .8rem; margin-bottom: 24px; }
+
+  /* ─── Tabs ────────────────────────── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; padding-bottom: 0; }
+  .tab { padding: 10px 18px; background: transparent; border: none; color: #888;
+      font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 600;
+      cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: #5865f2; border-bottom-color: #5865f2; }
+  .tab-icon { margin-right: 6px; }
+
+  /* ─── Panels ─────────────────────── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ─── Form Elements ───────────────── */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: .8rem; font-weight: 600; color: #aaa; margin-bottom: 4px; }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field select,
+  .field textarea {
+      width: 100%; background: #0f0f1a; border: 1px solid #2a2a4a; border-radius: 8px;
+      padding: 10px 14px; color: #ddd; font-family: 'Inter', sans-serif; font-size: .85rem;
+      outline: none; transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #5865f2; }
+  .field textarea { min-height: 80px; resize: vertical; }
+  .field .hint { font-size: .75rem; color: #666; margin-top: 4px; }
+  .field .error { font-size: .75rem; color: #ed4245; margin-top: 4px; display: none; }
+
+  .field-check { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .field-check input[type="checkbox"] { accent-color: #5865f2; width: 16px; height: 16px; }
+  .field-check label { font-size: .85rem; color: #ccc; cursor: pointer; }
+
+  .inline-fields { display: flex; gap: 12px; }
+  .inline-fields .field { flex: 1; }
+
+  /* ─── Source Rows ─────────────────── */
+  .source-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .source-row {
+      background: rgba(15,15,26,0.6); border: 1px solid #2a2a4a; border-radius: 10px;
+      padding: 14px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap;
+      transition: border-color .15s;
+  }
+  .source-row:hover { border-color: #3a3a5a; }
+  .source-row .src-fields { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; min-width: 200px; }
+  .source-row .src-fields .field { margin-bottom: 8px; min-width: 140px; }
+  .source-row .src-fields .field label { font-size: .7rem; }
+  .source-row .src-fields input, .source-row .src-fields select { font-size: .8rem; padding: 6px 10px; }
+  .source-row .src-actions { display: flex; gap: 6px; align-items: center; }
+  .btn-icon {
+      width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      background: #16213e; color: #ccc; transition: all .15s;
+  }
+  .btn-icon:hover { background: #2a2a4a; color: #fff; }
+  .btn-icon.danger:hover { background: #3a1e1e; color: #ed4245; }
+
+  /* ─── Buttons ─────────────────────── */
+  .btn {
+      padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
+      cursor: pointer; transition: all .15s; font-size: .85rem; font-family: 'Inter', sans-serif;
+  }
+  .btn-primary { background: #5865f2; color: #fff; }
+  .btn-primary:hover { background: #4752c4; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-secondary { background: #2a2a4a; color: #ccc; }
+  .btn-secondary:hover { background: #3a3a5a; color: #fff; }
+  .btn-success { background: #57f287; color: #111; }
+  .btn-success:hover { background: #46d67a; }
+  .btn-danger { background: #ed4245; color: #fff; }
+  .btn-danger:hover { background: #d43a3d; }
+  .btn-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  /* ─── Sections ────────────────────── */
+  .section { margin-bottom: 24px; }
+  .section-title {
+      font-size: .9rem; font-weight: 700; color: #5865f2; margin-bottom: 12px;
+      padding-bottom: 6px; border-bottom: 1px solid #2a2a4a; text-transform: uppercase;
+      letter-spacing: .5px;
+  }
+
+  /* ─── Toast ───────────────────────── */
+  .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1e3a5f; border: 1px solid #5865f2; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .85rem; z-index: 8000;
+      opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #3a1e1e; border-color: #ed4245; }
+  .toast.success { background: #1e3a2e; border-color: #57f287; }
+
+  /* ─── Status Badge ────────────────── */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: .7rem; font-weight: 600; }
+  .badge-green { background: rgba(87,242,135,0.15); color: #57f287; }
+  .badge-yellow { background: rgba(255,195,0,0.15); color: #ffc300; }
+  .badge-red { background: rgba(237,66,69,0.15); color: #ed4245; }
+
+  /* ─── Responsive ──────────────────── */
+  @media (max-width: 600px) {
+      .top-nav .nav-links { gap: 0; }
+      .top-nav a { font-size: .7rem; padding: 4px 6px; }
+      .source-row { flex-direction: column; }
+      .btn-group { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<!-- ─── Top Nav ─────────────────────── -->
+<nav class="top-nav">
+    <a href="/" class="brand">🎧 KRK-9</a>
+    <div class="nav-links">
+        <a href="/">🏠 Salas</a>
+        <a href="/chat">💬 Practice</a>
+        <a href="/news" class="active">📰 Briefing</a>
+        <a href="/assistant">🤖 Assistant</a>
+        <a href="#" onclick="openHistoryModal();return false;">📜</a>
+        <a href="#" onclick="openSettings();return false;">⚙️</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>📰 News Room Configuration</h1>
+    <p class="subtitle">Configure RSS sources, AI agent behavior, and briefing output</p>
+
+    <!-- Status -->
+    <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+        <span class="badge badge-green" id="statusBadge">● Ready</span>
+        <span class="badge badge-yellow" id="lastRunBadge">Last run: —</span>
+        <span class="badge" id="sourceCount">Sources: 0</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" data-tab="sources"><span class="tab-icon">📡</span> Sources</button>
+        <button class="tab" data-tab="agent"><span class="tab-icon">🧠</span> Agent</button>
+        <button class="tab" data-tab="output"><span class="tab-icon">📋</span> Output</button>
+        <button class="tab" data-tab="advanced"><span class="tab-icon">⚙️</span> Advanced</button>
+    </div>
+
+    <!-- ════════ Sources Panel ════════ -->
+    <div class="panel active" id="panel-sources">
+        <div class="section">
+            <div class="section-title">RSS / Atom Sources</div>
+            <p style="font-size:.8rem; color:#888; margin-bottom:12px;">
+                Add, remove, and configure news feeds. Only enabled sources are fetched.
+            </p>
+            <div class="source-list" id="sourceList"></div>
+            <button class="btn btn-secondary" onclick="addSource()">+ Add Source</button>
+        </div>
+    </div>
+
+    <!-- ════════ Agent Panel ════════ -->
+    <div class="panel" id="panel-agent">
+        <div class="section">
+            <div class="section-title">LLM Agent Configuration</div>
+
+            <div class="inline-fields">
+                <div class="field">
+                    <label>LLM Provider</label>
+                    <select id="agent_provider">
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="cerebras">Cerebras</option>
+                        <option value="groq">Groq</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Model</label>
+                    <input type="text" id="agent_model" placeholder="z-ai/glm-5.1">
+                </div>
+            </div>
+
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Temperature</label>
+                    <input type="number" id="agent_temp" min="0" max="2" step="0.1" value="0.6">
+                </div>
+                <div class="field">
+                    <label>Max Tokens</label>
+                    <input type="number" id="agent_max_tokens" min="100" max="8000" step="100" value="2000">
+                </div>
+                <div class="field">
+                    <label>Target Language</label>
+                    <input type="text" id="agent_target_lang" value="es">
+                </div>
+                <div class="field">
+                    <label>Source Language</label>
+                    <input type="text" id="agent_source_lang" value="en">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Summarize Style</label>
+                <select id="agent_style">
+                    <option value="bullet">Bullet list</option>
+                    <option value="narrative">Narrative paragraph</option>
+                    <option value="markdown_sections">Markdown sections</option>
+                    <option value="chat">Chat conversation</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>System Prompt</label>
+                <textarea id="agent_prompt" rows="8" placeholder="System prompt for the news collection agent..."></textarea>
+                <div class="hint">This prompt guides the AI on how to collect, filter, and format the briefing. Use {target_language} for the output language variable.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════ Output Panel ════════ -->
+    <div class="panel" id="panel-output">
+        <div class="section">
+            <div class="section-title">Briefing Output</div>
+
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Max Items</label>
+                    <input type="number" id="output_max_items" min="1" max="20" value="6">
+                </div>
+                <div class="field">
+                    <label>Max Snippet Length (chars)</label>
+                    <input type="number" id="output_snippet_len" min="50" max="1000" value="200">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Include Sections</label>
+                <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                    <div class="field-check"><input type="checkbox" id="sec_top_news" checked><label for="sec_top_news">Top News</label></div>
+                    <div class="field-check"><input type="checkbox" id="sec_suggested_tasks" checked><label for="sec_suggested_tasks">Suggested Tasks</label></div>
+                    <div class="field-check"><input type="checkbox" id="sec_vocabulary" checked><label for="sec_vocabulary">Vocabulary</label></div>
+                    <div class="field-check"><input type="checkbox" id="sec_discussion" checked><label for="sec_discussion">Discussion Questions</label></div>
+                    <div class="field-check"><input type="checkbox" id="sec_links" checked><label for="sec_links">Source Links</label></div>
+                </div>
+            </div>
+
+            <div class="field-check">
+                <input type="checkbox" id="output_snippets" checked>
+                <label for="output_snippets">Include article snippets</label>
+            </div>
+            <div class="field-check">
+                <input type="checkbox" id="output_links" checked>
+                <label for="output_links">Include original links</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════ Advanced Panel ════════ -->
+    <div class="panel" id="panel-advanced">
+        <div class="section">
+            <div class="section-title">Scheduling</div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Update Hour (0-23)</label>
+                    <input type="number" id="sched_hour" min="0" max="23" value="4">
+                </div>
+                <div class="field">
+                    <label>Frequency</label>
+                    <select id="sched_freq">
+                        <option value="daily">Daily</option>
+                        <option value="hourly">Hourly</option>
+                        <option value="manual">Manual (on-demand)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Timezone</label>
+                    <input type="text" id="sched_tz" value="local" placeholder="local, America/Caracas, Europe/Madrid">
+                </div>
+            </div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Cooldown (minutes)</label>
+                    <input type="number" id="sched_cooldown" min="0" max="1440" value="60">
+                </div>
+                <div class="field">
+                    <label>Max Retries</label>
+                    <input type="number" id="sched_retries" min="0" max="10" value="3">
+                </div>
+                <div class="field">
+                    <label>Retry Delay (seconds)</label>
+                    <input type="number" id="sched_retry_delay" min="1" max="120" value="10">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Caching &amp; Persistence</div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Cache Hours</label>
+                    <input type="number" id="cache_hours" min="1" max="168" value="24">
+                </div>
+                <div class="field">
+                    <label>History Days</label>
+                    <input type="number" id="cache_days" min="1" max="365" value="30">
+                </div>
+                <div class="field">
+                    <label>Max History Entries</label>
+                    <input type="number" id="cache_max" min="5" max="100" value="30">
+                </div>
+            </div>
+            <div class="field-check">
+                <input type="checkbox" id="cache_obsidian" checked>
+                <label for="cache_obsidian">Persist to Obsidian vault</label>
+            </div>
+            <div class="field">
+                <label>Obsidian Folder</label>
+                <input type="text" id="cache_folder" value="KRK9/Briefings">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Notifications</div>
+            <div class="field-check">
+                <input type="checkbox" id="notify_ready" checked>
+                <label for="notify_ready">Notify when briefing is ready</label>
+            </div>
+            <div class="field">
+                <label>Discord Channel ID (optional)</label>
+                <input type="text" id="notify_channel" placeholder="e.g. 1523161377747763342">
+            </div>
+            <div class="field-check">
+                <input type="checkbox" id="notify_tts">
+                <label for="notify_tts">Read briefing aloud via TTS</label>
+            </div>
+            <div class="field-check">
+                <input type="checkbox" id="notify_errors" checked>
+                <label for="notify_errors">Notify on errors</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Agentic Behavior</div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Autonomous Mode</label>
+                    <select id="agentic_auto">
+                        <option value="false">Manual (requires approval)</option>
+                        <option value="true">Autonomous (acts independently)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Agent Depth</label>
+                    <select id="agentic_depth">
+                        <option value="shallow">Shallow (fetch + summarize)</option>
+                        <option value="medium" selected>Medium (+filter + vocabulary)</option>
+                        <option value="deep">Deep (+tasks + contextual analysis)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Dedup Strategy</label>
+                    <select id="agentic_dedup">
+                        <option value="title">By title</option>
+                        <option value="link">By URL</option>
+                        <option value="hash">By content hash</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Max Source Age (hours)</label>
+                    <input type="number" id="agentic_age" min="1" max="168" value="48">
+                </div>
+            </div>
+            <div class="field-check">
+                <input type="checkbox" id="agentic_discovery">
+                <label for="agentic_discovery">Auto-discover new RSS sources</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Credentials</div>
+            <div class="field">
+                <label>NewsAPI Key</label>
+                <input type="password" id="cred_newsapi" placeholder="your-newsapi-key">
+            </div>
+            <div class="field">
+                <label>Guardian API Key</label>
+                <input type="password" id="cred_guardian" placeholder="your-guardian-key">
+            </div>
+            <div class="field">
+                <label>OpenWeather API Key (optional)</label>
+                <input type="password" id="cred_weather" placeholder="your-openweather-key">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Debug</div>
+            <div class="inline-fields">
+                <div class="field">
+                    <label>Log Level</label>
+                    <select id="debug_log">
+                        <option value="DEBUG">DEBUG</option>
+                        <option value="INFO" selected>INFO</option>
+                        <option value="WARNING">WARNING</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
+                </div>
+                <div class="field-check">
+                    <input type="checkbox" id="debug_dry_run">
+                    <label for="debug_dry_run">Dry run (no save, no notify)</label>
+                </div>
+                <div class="field-check">
+                    <input type="checkbox" id="debug_test_mode">
+                    <label for="debug_test_mode">Test mode (mock sources)</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-group">
+        <button class="btn btn-success" id="btnSave" onclick="saveConfig()">💾 Save Configuration</button>
+        <button class="btn btn-primary" id="btnTest" onclick="testFetch()">🔄 Test Fetch</button>
+        <button class="btn btn-secondary" id="btnReset" onclick="resetConfig()">↩ Reset to Defaults</button>
+        <button class="btn btn-secondary" id="btnRefresh" onclick="refreshBriefing()">📰 Generate Briefing</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const USER_ID = 'legacy_vaclav';
+let currentConfig = null;
+
+// ─── Toast ───────────────────────────
+function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ─── Tabs ────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+// ─── Load Config ─────────────────────
+async function loadConfig() {
+    try {
+        const r = await fetch(`/api/news/config?user_id=${USER_ID}`);
+        const data = await r.json();
+        currentConfig = data.config || null;
+        if (currentConfig) populateForm(currentConfig);
+        updateStatus(data);
+    } catch (e) {
+        showToast('❌ Failed to load config: ' + e.message, 'error');
+    }
+}
+
+function updateStatus(data) {
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = '● Ready';
+    badge.className = 'badge badge-green';
+    document.getElementById('sourceCount').textContent = `Sources: ${(data.config?.sources || []).length}`;
+    if (data.last_run) {
+        document.getElementById('lastRunBadge').textContent = `Last run: ${new Date(data.last_run).toLocaleString()}`;
+    }
+}
+
+function populateForm(cfg) {
+    const s = cfg.scheduling || {};
+    const a = cfg.agent || {};
+    const o = cfg.output || {};
+    const c = cfg.caching || {};
+    const n = cfg.notifications || {};
+    const ag = cfg.agentic || {};
+    const cred = cfg.credentials || {};
+    const d = cfg.debug || {};
+
+    // Scheduling
+    document.getElementById('sched_hour').value = s.update_hour ?? 4;
+    document.getElementById('sched_freq').value = s.frequency ?? 'daily';
+    document.getElementById('sched_tz').value = s.timezone ?? 'local';
+    document.getElementById('sched_cooldown').value = s.cooldown_minutes ?? 60;
+    document.getElementById('sched_retries').value = s.max_retries ?? 3;
+    document.getElementById('sched_retry_delay').value = s.retry_delay_seconds ?? 10;
+
+    // Agent
+    document.getElementById('agent_provider').value = a.llm_provider ?? 'openrouter';
+    document.getElementById('agent_model').value = a.llm_model ?? '';
+    document.getElementById('agent_temp').value = a.temperature ?? 0.6;
+    document.getElementById('agent_max_tokens').value = a.max_tokens ?? 2000;
+    document.getElementById('agent_target_lang').value = a.target_language ?? 'es';
+    document.getElementById('agent_source_lang').value = a.source_language ?? 'en';
+    document.getElementById('agent_style').value = a.summarize_style ?? 'markdown_sections';
+    document.getElementById('agent_prompt').value = a.system_prompt ?? '';
+
+    // Output
+    document.getElementById('output_max_items').value = o.max_briefing_items ?? 6;
+    document.getElementById('output_snippet_len').value = o.max_snippet_length ?? 200;
+    document.getElementById('sec_top_news').checked = (o.sections || []).includes('top_news');
+    document.getElementById('sec_suggested_tasks').checked = (o.sections || []).includes('suggested_tasks');
+    document.getElementById('sec_vocabulary').checked = (o.sections || []).includes('vocabulary');
+    document.getElementById('sec_discussion').checked = (o.sections || []).includes('discussion_questions');
+    document.getElementById('sec_links').checked = (o.sections || []).includes('sources_links');
+    document.getElementById('output_snippets').checked = o.include_article_snippets ?? true;
+    document.getElementById('output_links').checked = o.include_original_links ?? true;
+
+    // Caching
+    document.getElementById('cache_hours').value = c.cache_hours ?? 24;
+    document.getElementById('cache_days').value = c.history_days ?? 30;
+    document.getElementById('cache_max').value = c.max_history_entries ?? 30;
+    document.getElementById('cache_obsidian').checked = c.persist_to_obsidian ?? true;
+    document.getElementById('cache_folder').value = c.obsidian_folder ?? 'KRK9/Briefings';
+
+    // Notifications
+    document.getElementById('notify_ready').checked = n.notify_on_briefing_ready ?? true;
+    document.getElementById('notify_channel').value = n.notify_discord_channel ?? '';
+    document.getElementById('notify_tts').checked = n.notify_via_tts ?? false;
+    document.getElementById('notify_errors').checked = n.error_notification ?? true;
+
+    // Agentic
+    document.getElementById('agentic_auto').value = String(ag.autonomous_mode ?? false);
+    document.getElementById('agentic_depth').value = ag.agent_depth ?? 'medium';
+    document.getElementById('agentic_dedup').value = ag.dedup_strategy ?? 'title';
+    document.getElementById('agentic_age').value = ag.max_source_age_hours ?? 48;
+    document.getElementById('agentic_discovery').checked = ag.auto_discovery ?? false;
+
+    // Credentials
+    document.getElementById('cred_newsapi').value = cred.newsapi_key ?? '';
+    document.getElementById('cred_guardian').value = cred.guardian_api_key ?? '';
+    document.getElementById('cred_weather').value = cred.openweather_api_key ?? '';
+
+    // Debug
+    document.getElementById('debug_log').value = d.log_level ?? 'INFO';
+    document.getElementById('debug_dry_run').checked = d.dry_run ?? false;
+    document.getElementById('debug_test_mode').checked = d.test_mode ?? false;
+
+    // Sources
+    renderSourceList(cfg.sources || []);
+}
+
+// ─── Sources ─────────────────────────
+function renderSourceList(sources) {
+    const list = document.getElementById('sourceList');
+    list.innerHTML = '';
+    sources.forEach((src, idx) => {
+        const row = document.createElement('div');
+        row.className = 'source-row';
+        row.innerHTML = `
+            <div class="src-fields">
+                <div class="field"><label>ID</label><input type="text" value="${esc(src.id)}" data-idx="${idx}" data-f="id" class="src-field"></div>
+                <div class="field"><label>Name</label><input type="text" value="${esc(src.name)}" data-idx="${idx}" data-f="name" class="src-field"></div>
+                <div class="field"><label>Type</label><select data-idx="${idx}" data-f="type" class="src-field">
+                    <option value="rss" ${src.type==='rss'?'selected':''}>RSS</option>
+                    <option value="atom" ${src.type==='atom'?'selected':''}>Atom</option>
+                    <option value="newsapi" ${src.type==='newsapi'?'selected':''}>NewsAPI</option>
+                    <option value="feedbin" ${src.type==='feedbin'?'selected':''}>Feedbin</option>
+                </select></div>
+                <div class="field"><label>URL</label><input type="text" value="${esc(src.url)}" data-idx="${idx}" data-f="url" class="src-field" style="min-width:250px"></div>
+                <div class="field"><label>Enabled</label><select data-idx="${idx}" data-f="enabled" class="src-field">
+                    <option value="true" ${src.enabled?'selected':''}>Yes</option>
+                    <option value="false" ${!src.enabled?'selected':''}>No</option>
+                </select></div>
+                <div class="field"><label>Max Items</label><input type="number" value="${src.max_items_per_source||5}" data-idx="${idx}" data-f="max_items_per_source" class="src-field" style="width:70px"></div>
+                <div class="field"><label>Keywords (comma)</label><input type="text" value="${esc(src.keywords_filter||'')}" data-idx="${idx}" data-f="keywords_filter" class="src-field"></div>
+            </div>
+            <div class="src-actions">
+                <button class="btn-icon danger" onclick="removeSource(${idx})" title="Remove">🗑</button>
+            </div>
+        `;
+        list.appendChild(row);
+    });
+    document.getElementById('sourceCount').textContent = `Sources: ${sources.length}`;
+}
+
+function addSource() {
+    if (!currentConfig) return;
+    const id = 'custom-' + Date.now();
+    currentConfig.sources.push({
+        id, name: '', type: 'rss', url: '', enabled: true,
+        max_items_per_source: 5, keywords_filter: '', exclude_keywords: '', language: 'en'
+    });
+    renderSourceList(currentConfig.sources);
+}
+
+function removeSource(idx) {
+    if (!currentConfig) return;
+    currentConfig.sources.splice(idx, 1);
+    renderSourceList(currentConfig.sources);
+}
+
+function getSourcesFromForm() {
+    if (!currentConfig) return [];
+    const rows = document.querySelectorAll('#sourceList .source-row');
+    return Array.from(rows).map(row => {
+        const src = {};
+        row.querySelectorAll('.src-field').forEach(f => {
+            const idx = f.dataset.idx;
+            const field = f.dataset.f;
+            src[field] = field === 'enabled' ? f.value === 'true' : f.value;
+        });
+        return src;
+    });
+}
+
+// ─── Save Config ─────────────────────
+async function saveConfig() {
+    if (!currentConfig) { showToast('No config loaded', 'error'); return; }
+
+    // Read scheduling
+    currentConfig.scheduling = {
+        update_hour: parseInt(document.getElementById('sched_hour').value) || 4,
+        frequency: document.getElementById('sched_freq').value,
+        timezone: document.getElementById('sched_tz').value || 'local',
+        cooldown_minutes: parseInt(document.getElementById('sched_cooldown').value) || 60,
+        max_retries: parseInt(document.getElementById('sched_retries').value) || 3,
+        retry_delay_seconds: parseInt(document.getElementById('sched_retry_delay').value) || 10,
+    };
+
+    // Read agent
+    currentConfig.agent = {
+        llm_provider: document.getElementById('agent_provider').value,
+        llm_model: document.getElementById('agent_model').value,
+        temperature: parseFloat(document.getElementById('agent_temp').value) || 0.6,
+        max_tokens: parseInt(document.getElementById('agent_max_tokens').value) || 2000,
+        target_language: document.getElementById('agent_target_lang').value || 'es',
+        source_language: document.getElementById('agent_source_lang').value || 'en',
+        summarize_style: document.getElementById('agent_style').value,
+        system_prompt: document.getElementById('agent_prompt').value,
+    };
+
+    // Read output
+    const sections = [];
+    if (document.getElementById('sec_top_news').checked) sections.push('top_news');
+    if (document.getElementById('sec_suggested_tasks').checked) sections.push('suggested_tasks');
+    if (document.getElementById('sec_vocabulary').checked) sections.push('vocabulary');
+    if (document.getElementById('sec_discussion').checked) sections.push('discussion_questions');
+    if (document.getElementById('sec_links').checked) sections.push('sources_links');
+
+    currentConfig.output = {
+        max_briefing_items: parseInt(document.getElementById('output_max_items').value) || 6,
+        sections,
+        include_article_snippets: document.getElementById('output_snippets').checked,
+        max_snippet_length: parseInt(document.getElementById('output_snippet_len').value) || 200,
+        include_original_links: document.getElementById('output_links').checked,
+    };
+
+    // Read caching
+    currentConfig.caching = {
+        cache_hours: parseInt(document.getElementById('cache_hours').value) || 24,
+        history_days: parseInt(document.getElementById('cache_days').value) || 30,
+        max_history_entries: parseInt(document.getElementById('cache_max').value) || 30,
+        persist_to_obsidian: document.getElementById('cache_obsidian').checked,
+        obsidian_folder: document.getElementById('cache_folder').value || 'KRK9/Briefings',
+    };
+
+    // Read notifications
+    currentConfig.notifications = {
+        notify_on_briefing_ready: document.getElementById('notify_ready').checked,
+        notify_discord_channel: document.getElementById('notify_channel').value,
+        notify_via_tts: document.getElementById('notify_tts').checked,
+        error_notification: document.getElementById('notify_errors').checked,
+    };
+
+    // Read agentic
+    currentConfig.agentic = {
+        autonomous_mode: document.getElementById('agentic_auto').value === 'true',
+        agent_depth: document.getElementById('agentic_depth').value,
+        auto_discovery: document.getElementById('agentic_discovery').checked,
+        dedup_strategy: document.getElementById('agentic_dedup').value,
+        max_source_age_hours: parseInt(document.getElementById('agentic_age').value) || 48,
+    };
+
+    // Read credentials
+    currentConfig.credentials = {
+        newsapi_key: document.getElementById('cred_newsapi').value,
+        guardian_api_key: document.getElementById('cred_guardian').value,
+        openweather_api_key: document.getElementById('cred_weather').value,
+    };
+
+    // Read debug
+    currentConfig.debug = {
+        dry_run: document.getElementById('debug_dry_run').checked,
+        log_level: document.getElementById('debug_log').value,
+        test_mode: document.getElementById('debug_test_mode').checked,
+    };
+
+    // Read sources from form
+    currentConfig.sources = getSourcesFromForm();
+
+    // Validate
+    try {
+        const vr = await fetch('/api/news/config-validate', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ config: currentConfig })
+        });
+        const vd = await vr.json();
+        if (!vd.valid) {
+            showToast('❌ Validation: ' + (vd.error || 'invalid config'), 'error');
+            return;
+        }
+    } catch (e) { /* skip validation on network error */ }
+
+    // Save
+    try {
+        const r = await fetch('/api/news/config', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID, config: currentConfig })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast('✅ Configuration saved', 'success');
+        } else {
+            showToast('❌ ' + (d.error || 'Save failed'), 'error');
+        }
+    } catch (e) {
+        showToast('❌ Network error: ' + e.message, 'error');
+    }
+}
+
+// ─── Test Fetch ──────────────────────
+async function testFetch() {
+    showToast('⏳ Testing source connectivity...', 'info');
+    try {
+        const r = await fetch('/api/news/test-fetch', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast(`✅ Fetched ${d.items_count} items from ${d.sources_ok} sources`, 'success');
+        } else {
+            showToast('❌ ' + (d.error || 'Fetch failed'), 'error');
+        }
+    } catch (e) {
+        showToast('❌ ' + e.message, 'error');
+    }
+}
+
+// ─── Reset ───────────────────────────
+async function resetConfig() {
+    if (!confirm('Reset all news configuration to defaults?')) return;
+    try {
+        const r = await fetch('/api/news/config-reset', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID })
+        });
+        const d = await r.json();
+        if (d.ok) { loadConfig(); showToast('✅ Reset to defaults', 'success'); }
+        else showToast('❌ ' + (d.error || 'reset failed'), 'error');
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+// ─── Refresh Briefing ────────────────
+async function refreshBriefing() {
+    showToast('⏳ Generating briefing (may take 30-60s)...', 'info');
+    try {
+        const r = await fetch('/api/news/refresh', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast('✅ Briefing generated!', 'success');
+            setTimeout(() => location.href = '/news', 1500);
+        } else {
+            showToast('❌ ' + (d.error || 'Generation failed'), 'error');
+        }
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+// ─── Helpers ─────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Init
+loadConfig();
+</script>
+</body>
+</html>
