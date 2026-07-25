@@ -31,7 +31,13 @@ Cualquiera puede instalarlo vía Hermes.
 
 ## 🗂️ Sesiones
 - [[2026-07-07-krk9-bug-speak-duplicado|2026-07-07 — Bug `!speak` duplicado + reinicio de servicios]]
+- [[2026-07-20-krk9-personality-editor-gui|2026-07-20 — Editor GUI personalidad/voz/LLM + fix load_dotenv]]
+- [[2026-07-21-krk9-casete-ui-multiusuario|2026-07-21 — Casete loro cyborg + rediseño GUI multiusuario + 14 commits]]
+- [[2026-07-21-krk9-youtube-command-bugfixes|2026-07-21 (tarde) — Comando !video YouTube + bugfixes (vocab v2, anti-eco, audio server, Casete JSON)]]
+
+## 📋 Planes (pendientes de ejecución)
+- [[PLAN_casete_obsidian_topics|Plan técnico: Casete + historial + temas + ElevenLabs]] (2026-07-21, Aprobado y **EJECUTADO** — ver sesión 2026-07-21)
 - Ver todas: buscar `path:Discord-Bot/Sessions`
 
 ## ⏭️ Pendientes
-- [ ] Registrar primeras sesiones de trabajo de KRK-9 aquí
+- [ ] Probar en Discord (`./start.sh` + `!speak`) que la GUI aplica persona/voz/LLM y que `!speak` no duplica (ver sesión 2026-07-20)
