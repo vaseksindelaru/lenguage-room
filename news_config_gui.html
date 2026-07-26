@@ -413,6 +413,11 @@
                 <label>OpenWeather API Key (optional)</label>
                 <input type="password" id="cred_weather" placeholder="your-openweather-key">
             </div>
+            <div class="field">
+                <label>Google AI Studio API Key (for fallback LLM)</label>
+                <input type="password" id="cred_google_ai" placeholder="AQ.***">
+                <div class="hint">Gemini API key from Google AI Studio. Used as fallback when OpenRouter is unavailable.</div>
+            </div>
         </div>
 
         <div class="section">
@@ -558,6 +563,7 @@ function populateForm(cfg) {
     document.getElementById('cred_newsapi').value = cred.newsapi_key ?? '';
     document.getElementById('cred_guardian').value = cred.guardian_api_key ?? '';
     document.getElementById('cred_weather').value = cred.openweather_api_key ?? '';
+    document.getElementById('cred_google_ai').value = cred.google_ai_studio_key ?? '';
 
     // Debug
     document.getElementById('debug_log').value = d.log_level ?? 'INFO';
@@ -705,6 +711,7 @@ async function saveConfig() {
         newsapi_key: document.getElementById('cred_newsapi').value,
         guardian_api_key: document.getElementById('cred_guardian').value,
         openweather_api_key: document.getElementById('cred_weather').value,
+        google_ai_studio_key: document.getElementById('cred_google_ai').value,
     };
 
     // Read debug

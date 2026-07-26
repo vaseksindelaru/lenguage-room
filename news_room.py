@@ -5,9 +5,16 @@ from datetime import datetime
 from typing import List, Dict
 
 logger = logging.getLogger("news_room")
+_google_ai_creds_cache: Dict = {}
 
 def _get_google_ai_key() -> str:
-    """Returns the Google AI Studio API key from env or .env."""
+    """Returns the Google AI Studio API key from credentials config, then env/.env."""
+    # First try credentials from config (passed via agent_cfg)
+    creds = _google_ai_creds_cache.get("credentials", {})
+    key = creds.get("google_ai_studio_key", "")
+    if key:
+        return key
+    # Fall back to environment variable
     return os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
 
 async def _call_google_ai(prompt: str, system: str = "", temperature: float = 0.6, max_tokens: int = 2000) -> str | None:
@@ -87,6 +94,9 @@ async def generate_briefing(uid: str) -> str:
         md = f"# ☕ Briefing {datetime.now():%Y-%m-%d}\n\n⚠️ No se pudieron descargar noticias hoy."
     else:
         agent_cfg = cfg.get("agent", {})
+        # Cache Google AI Studio credentials for _get_google_ai_key()
+        global _google_ai_creds_cache
+        _google_ai_creds_cache = cfg.get("credentials", {})
         prompt = build_briefing_prompt(items, max_items, agent_cfg)
         temperature = agent_cfg.get("temperature", 0.6)
         body = None
