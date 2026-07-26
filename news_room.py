@@ -125,7 +125,6 @@ async def generate_briefing(uid: str) -> str:
                             "You are the news briefing agent for KRK-9. "
                             "Output ONLY markdown, no preamble."),
                         temperature=temperature,
-                        max_tokens=agent_cfg.get("max_tokens", 2000),
                     )
                 if body is not None:
                     break
