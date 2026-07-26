@@ -622,6 +622,16 @@ async def rooms_get_handler(request):
     return web.json_response({"user_id": uid, "rooms": rooms})
 
 # ─── Server Setup ──────────────────────────────────────────────────────────
+@web.middleware
+async def error_middleware(request, handler):
+    try:
+        return await handler(request)
+    except web.HTTPException as e:
+        return web.json_response({"error": str(e.reason)}, status=e.status)
+    except Exception as e:
+        logger.error(f"Unhandled error: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
 async def start_audio_server():
     """Start the aiohttp server."""
     app = web.Application()
