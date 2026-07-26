@@ -1,9 +1,40 @@
 """News Room: briefing matutino por usuario (RSS + LLM resumen)."""
 import logging
+import os
 from datetime import datetime
 from typing import List, Dict
 
 logger = logging.getLogger("news_room")
+
+def _get_google_ai_key() -> str:
+    """Returns the Google AI Studio API key from env or .env."""
+    return os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
+
+async def _call_google_ai(prompt: str, system: str = "", temperature: float = 0.6, max_tokens: int = 2000) -> str | None:
+    """Calls Google AI Studio API via generativeai. Returns text or None."""
+    api_key = _get_google_ai_key()
+    if not api_key:
+        return None
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        messages = []
+        if system:
+            messages.append({"role": "user", "parts": [system + "\n\n" + prompt]})
+        else:
+            messages.append({"role": "user", "parts": [prompt]})
+        response = model.generate_content(
+            messages,
+            generation_config=genai.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            ),
+        )
+        return response.text
+    except Exception as e:
+        logger.error(f"❌ Google AI Studio briefing falló: {e}")
+        return None
 
 async def fetch_rss_items(sources: List[Dict], max_per_source: int = 5) -> List[Dict]:
     """Descarga items de fuentes RSS habilitadas."""
@@ -57,6 +88,7 @@ async def generate_briefing(uid: str) -> str:
         agent_cfg = cfg.get("agent", {})
         prompt = build_briefing_prompt(items, max_items, agent_cfg)
         temperature = agent_cfg.get("temperature", 0.6)
+        body = None
         try:
             body = await call_openrouter(
                 [{"role": "user", "content": prompt}],
@@ -67,7 +99,17 @@ async def generate_briefing(uid: str) -> str:
                 max_tokens=agent_cfg.get("max_tokens", 2000),
             )
         except Exception as e:
-            logger.error(f"❌ LLM briefing falló: {e}")
+            logger.warning(f"⚠️ OpenRouter briefing falló: {e}, intentando Google AI Studio...")
+        if body is None:
+            body = await _call_google_ai(
+                prompt,
+                system=agent_cfg.get("system_prompt",
+                    "You are the news briefing agent for KRK-9. "
+                    "Output ONLY markdown, no preamble."),
+                temperature=temperature,
+            )
+        if body is None:
+            logger.error("❌ Ambos LLM fallaron")
             body = "(LLM no disponible — lista cruda)\n" + "\n".join(f"- {i['title']} ({i['source']})" for i in items)
 
         md = (f"---\ntype: krk9-news-briefing\ndate: \"{datetime.now():%Y-%m-%d}\"\n"
