@@ -593,7 +593,7 @@ async def news_refresh_handler(request):
         uid = body.get("user_id", "legacy_vaclav")
         from news_room import generate_briefing
         md = await generate_briefing(uid)
-        return web.json_response({"status": "ok", "briefing": md})
+        return web.json_response({"ok": True, "briefing": md})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
