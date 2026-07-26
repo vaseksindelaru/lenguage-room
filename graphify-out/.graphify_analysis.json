@@ -1,0 +1,472 @@
+{
+  "communities": {
+    "0": [
+      "audio_server",
+      "audio_server_active_agents_get_handler",
+      "audio_server_active_agents_post_handler",
+      "audio_server_assistant_chat_handler",
+      "audio_server_broadcast_audio",
+      "audio_server_broadcast_audio_http",
+      "audio_server_chat_handler",
+      "audio_server_detect_llm_providers",
+      "audio_server_health_handler",
+      "audio_server_index_handler",
+      "audio_server_invite_handler",
+      "audio_server_load_voice_webhook_url",
+      "audio_server_main",
+      "audio_server_news_briefing_handler",
+      "audio_server_news_refresh_handler",
+      "audio_server_personas_get_handler",
+      "audio_server_personas_post_handler",
+      "audio_server_preferences_handler",
+      "audio_server_rationale_1",
+      "audio_server_rationale_101",
+      "audio_server_rationale_108",
+      "audio_server_rationale_128",
+      "audio_server_rationale_155",
+      "audio_server_rationale_196",
+      "audio_server_rationale_237",
+      "audio_server_rationale_262",
+      "audio_server_rationale_288",
+      "audio_server_rationale_325",
+      "audio_server_rationale_366",
+      "audio_server_rationale_376",
+      "audio_server_rationale_392",
+      "audio_server_rationale_409",
+      "audio_server_rationale_49",
+      "audio_server_rationale_497",
+      "audio_server_rationale_511",
+      "audio_server_rationale_527",
+      "audio_server_rationale_578",
+      "audio_server_rationale_590",
+      "audio_server_rationale_602",
+      "audio_server_rationale_617",
+      "audio_server_rationale_626",
+      "audio_server_rationale_72",
+      "audio_server_rationale_97",
+      "audio_server_rooms_get_handler",
+      "audio_server_send_audio_to_browsers",
+      "audio_server_session_export_handler",
+      "audio_server_session_save_obsidian_handler",
+      "audio_server_sessions_create_handler",
+      "audio_server_sessions_list_handler",
+      "audio_server_sessions_resume_handler",
+      "audio_server_start_audio_server",
+      "audio_server_topic_set_handler",
+      "audio_server_topics_list_handler",
+      "audio_server_tts_preview_handler",
+      "audio_server_voice_text_handler",
+      "audio_server_websocket_handler",
+      "krk9_assistant",
+      "krk9_assistant_assistant_reply",
+      "krk9_assistant_rationale_1",
+      "run_server",
+      "run_server_main",
+      "state_manager_get_assistant_config",
+      "state_manager_get_user_rooms",
+      "state_manager_load_state",
+      "state_manager_rationale_153",
+      "state_manager_rationale_672",
+      "state_manager_set_active_session"
+    ],
+    "1": [
+      "any",
+      "bot_cmd_session",
+      "bot_cmd_sessions",
+      "bot_rationale_1622",
+      "bot_rationale_1637",
+      "state_manager",
+      "state_manager_append_session_message",
+      "state_manager_create_user_session",
+      "state_manager_deep_merge",
+      "state_manager_default_rooms",
+      "state_manager_ensure_state_dir",
+      "state_manager_get_active_session",
+      "state_manager_get_casete_counts",
+      "state_manager_get_casete_known",
+      "state_manager_get_casete_threshold",
+      "state_manager_get_default_personas",
+      "state_manager_get_user_vocab_container",
+      "state_manager_list_user_sessions",
+      "state_manager_migrate_state_v1_to_v2",
+      "state_manager_migrate_state_v2_to_v3",
+      "state_manager_rationale_1",
+      "state_manager_rationale_128",
+      "state_manager_rationale_148",
+      "state_manager_rationale_210",
+      "state_manager_rationale_242",
+      "state_manager_rationale_293",
+      "state_manager_rationale_338",
+      "state_manager_rationale_507",
+      "state_manager_rationale_542",
+      "state_manager_rationale_555",
+      "state_manager_rationale_575",
+      "state_manager_rationale_592",
+      "state_manager_rationale_597",
+      "state_manager_rationale_602",
+      "state_manager_rationale_607",
+      "state_manager_rationale_647",
+      "state_manager_rationale_661",
+      "state_manager_rationale_680",
+      "state_manager_rationale_702",
+      "state_manager_reset_state",
+      "state_manager_save_personas",
+      "state_manager_save_personas_unlocked",
+      "state_manager_set_active_room",
+      "state_manager_set_casete_threshold"
+    ],
+    "2": [
+      "bot_cmd_pause",
+      "bot_cmd_preferences",
+      "bot_cmd_resume",
+      "bot_rationale_1171",
+      "bot_rationale_1186",
+      "bot_rationale_1693",
+      "news_config_rationale_117",
+      "news_config_validate_news_config",
+      "news_gui_routes",
+      "news_gui_routes_news_briefing_handler",
+      "news_gui_routes_news_config_get_handler",
+      "news_gui_routes_news_config_post_handler",
+      "news_gui_routes_news_config_reset_handler",
+      "news_gui_routes_news_config_validate_handler",
+      "news_gui_routes_news_gui_handler",
+      "news_gui_routes_news_refresh_handler",
+      "news_gui_routes_news_test_fetch_handler",
+      "news_gui_routes_rationale_1",
+      "news_gui_routes_rationale_101",
+      "news_gui_routes_rationale_12",
+      "news_gui_routes_rationale_124",
+      "news_gui_routes_rationale_138",
+      "news_gui_routes_rationale_153",
+      "news_gui_routes_rationale_19",
+      "news_gui_routes_rationale_38",
+      "news_gui_routes_rationale_66",
+      "news_gui_routes_rationale_85",
+      "news_gui_routes_register_news_routes",
+      "news_room",
+      "news_room_build_briefing_prompt",
+      "news_room_fetch_rss_items",
+      "news_room_generate_briefing",
+      "news_room_rationale_1",
+      "news_room_rationale_44",
+      "news_room_rationale_9",
+      "state_manager_get_news_config",
+      "state_manager_rationale_186",
+      "state_manager_rationale_326",
+      "state_manager_save_news_config",
+      "state_manager_save_state"
+    ],
+    "3": [
+      "audio_server_init_audio_server",
+      "audio_server_rationale_750",
+      "bot",
+      "bot_before_conversation_loop",
+      "bot_call_ollama_native",
+      "bot_cmd_score",
+      "bot_init_llm_clients",
+      "bot_on_ready",
+      "bot_rationale_1",
+      "bot_rationale_1735",
+      "bot_rationale_366",
+      "bot_rationale_420",
+      "bot_rationale_438",
+      "bot_rationale_982",
+      "bot_warmup_ollama",
+      "state_manager_get_welcome_message",
+      "state_manager_rationale_217"
+    ],
+    "4": [
+      "bot_extract_notable_words",
+      "bot_generate_tts",
+      "bot_get_avatar_url",
+      "bot_on_message",
+      "bot_rationale_1081",
+      "bot_rationale_52",
+      "bot_rationale_548",
+      "bot_rationale_559",
+      "bot_rationale_921",
+      "bot_send_agent_message",
+      "message",
+      "state_manager_rationale_613",
+      "state_manager_register_word_heard",
+      "textchannel"
+    ],
+    "5": [
+      "install_krk9",
+      "install_krk9_clone_repo",
+      "install_krk9_detect_os",
+      "install_krk9_install_deps",
+      "install_krk9_main",
+      "install_krk9_print_error",
+      "install_krk9_print_header",
+      "install_krk9_print_step",
+      "install_krk9_print_success",
+      "install_krk9_setup_env",
+      "install_krk9_setup_ollama",
+      "install_krk9_sh__entry",
+      "install_krk9_start_app"
+    ],
+    "6": [
+      "bot_calculate_delay",
+      "bot_cmd_video",
+      "bot_conversation_loop",
+      "bot_decide_next_agent",
+      "bot_generate_agent_reply",
+      "bot_rationale_1511",
+      "bot_rationale_536",
+      "bot_rationale_689",
+      "bot_rationale_814",
+      "bot_rationale_933",
+      "state_manager_load_personas",
+      "state_manager_rationale_512"
+    ],
+    "7": [
+      "bot_call_openrouter",
+      "bot_cmd_helpme",
+      "bot_cmd_topic",
+      "bot_generate_conversation_starter",
+      "bot_generate_coordinator_decision",
+      "bot_generate_topic_suggestions",
+      "bot_rationale_1203",
+      "bot_rationale_1360",
+      "bot_rationale_1601",
+      "bot_rationale_459",
+      "bot_rationale_638",
+      "bot_rationale_758"
+    ],
+    "8": [
+      "start",
+      "start_check_env",
+      "start_is_audio_healthy",
+      "start_is_bot_running",
+      "start_is_ollama_up",
+      "start_port_in_use",
+      "start_print_success",
+      "start_sh__entry",
+      "start_start_docker",
+      "start_start_local",
+      "start_stop_local"
+    ],
+    "9": [
+      "bot_cmd_casete",
+      "bot_extract_target_word",
+      "bot_maybe_invoke_casete",
+      "bot_on_casete_help",
+      "bot_rationale_1500",
+      "bot_rationale_63",
+      "bot_rationale_82",
+      "bot_rationale_854",
+      "bot_rationale_903",
+      "bot_truncate_casete_response"
+    ],
+    "10": [
+      "tts_providers",
+      "tts_providers_clean_text",
+      "tts_providers_generate_tts",
+      "tts_providers_generate_tts_edge",
+      "tts_providers_generate_tts_elevenlabs",
+      "tts_providers_rationale_1",
+      "tts_providers_rationale_39",
+      "tts_providers_rationale_57",
+      "tts_providers_rationale_75"
+    ],
+    "11": [
+      "setup_wizard",
+      "setup_wizard_ask_input",
+      "setup_wizard_ask_yes_no",
+      "setup_wizard_check_dependency",
+      "setup_wizard_main",
+      "setup_wizard_print_header",
+      "setup_wizard_print_step"
+    ],
+    "12": [
+      "news_config",
+      "news_config_get_news_config",
+      "news_config_rationale_1",
+      "news_config_rationale_101",
+      "news_config_rationale_111",
+      "news_config_save_news_config"
+    ],
+    "13": [
+      "bot_cmd_speak",
+      "bot_rationale_1420",
+      "bot_rationale_987",
+      "bot_setup_webhooks"
+    ],
+    "14": [
+      "bot_get_topic",
+      "bot_load_topics",
+      "bot_rationale_350",
+      "bot_rationale_357"
+    ],
+    "15": [
+      "run_audio",
+      "run_audio_sh__entry"
+    ]
+  },
+  "cohesion": {
+    "0": 0.0506558118498417,
+    "1": 0.06659619450317125,
+    "2": 0.08205128205128205,
+    "3": 0.14705882352941177,
+    "4": 0.16483516483516483,
+    "5": 0.4230769230769231,
+    "6": 0.18181818181818182,
+    "7": 0.18181818181818182,
+    "8": 0.41818181818181815,
+    "9": 0.2,
+    "10": 0.3333333333333333,
+    "11": 0.5238095238095238,
+    "12": 0.3333333333333333,
+    "13": 0.5,
+    "14": 0.5,
+    "15": 1.0
+  },
+  "gods": [
+    {
+      "id": "state_manager_load_state",
+      "label": "load_state()",
+      "degree": 44
+    },
+    {
+      "id": "audio_server_start_audio_server",
+      "label": "start_audio_server()",
+      "degree": 35
+    },
+    {
+      "id": "state_manager_save_state",
+      "label": "save_state()",
+      "degree": 26
+    },
+    {
+      "id": "bot_send_agent_message",
+      "label": "send_agent_message()",
+      "degree": 16
+    },
+    {
+      "id": "bot_call_openrouter",
+      "label": "call_openrouter()",
+      "degree": 14
+    },
+    {
+      "id": "bot_on_message",
+      "label": "on_message()",
+      "degree": 12
+    },
+    {
+      "id": "news_room_generate_briefing",
+      "label": "generate_briefing()",
+      "degree": 12
+    },
+    {
+      "id": "state_manager_load_personas",
+      "label": "load_personas()",
+      "degree": 11
+    },
+    {
+      "id": "install_krk9_main",
+      "label": "main()",
+      "degree": 10
+    },
+    {
+      "id": "news_gui_routes_register_news_routes",
+      "label": "register_news_routes()",
+      "degree": 10
+    }
+  ],
+  "surprises": [
+    {
+      "source": "start_audio_server()",
+      "target": "news_config_get_handler()",
+      "source_files": [
+        "audio_server.py",
+        "news_gui_routes.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "start_audio_server()",
+      "target": "news_config_post_handler()",
+      "source_files": [
+        "audio_server.py",
+        "news_gui_routes.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "start_audio_server()",
+      "target": "news_config_reset_handler()",
+      "source_files": [
+        "audio_server.py",
+        "news_gui_routes.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "start_audio_server()",
+      "target": "news_config_validate_handler()",
+      "source_files": [
+        "audio_server.py",
+        "news_gui_routes.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "start_audio_server()",
+      "target": "news_gui_handler()",
+      "source_files": [
+        "audio_server.py",
+        "news_gui_routes.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `load_state()` connect `audio_server.py` to `state_manager.py`, `save_state`, `bot.py`, `send_agent_message`, `load_personas`, `call_openrouter`, `on_casete_help`, `cmd_speak`?",
+      "why": "High betweenness centrality (0.169) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `save_state()` connect `save_state` to `audio_server.py`, `state_manager.py`, `bot.py`, `send_agent_message`, `call_openrouter`, `cmd_speak`?",
+      "why": "High betweenness centrality (0.064) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `generate_tts()` connect `generate_tts` to `audio_server.py`, `bot.py`, `send_agent_message`?",
+      "why": "High betweenness centrality (0.054) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 30 inferred relationships involving `start_audio_server()` (e.g. with `active_agents_get_handler()` and `active_agents_post_handler()`) actually correct?",
+      "why": "`start_audio_server()` has 30 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `run_audio.sh script` to the rest of the system?",
+      "why": "1 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `audio_server.py` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.0506558118498417 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `state_manager.py` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06659619450317125 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

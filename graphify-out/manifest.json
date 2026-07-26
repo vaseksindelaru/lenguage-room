@@ -1,0 +1,67 @@
+{
+  "audio_server.py": {
+    "mtime": 1785004243.652315,
+    "ast_hash": "cbac023bdd4f8f3414756f9e46bd5c51",
+    "semantic_hash": "cbac023bdd4f8f3414756f9e46bd5c51"
+  },
+  "bot.py": {
+    "mtime": 1785004243.660315,
+    "ast_hash": "efb705b439a063c78190d6b44fac9774",
+    "semantic_hash": "efb705b439a063c78190d6b44fac9774"
+  },
+  "install-krk9.sh": {
+    "mtime": 1783458815.6965592,
+    "ast_hash": "6abc2fac40e578e15bbd816a50ea73a6",
+    "semantic_hash": "6abc2fac40e578e15bbd816a50ea73a6"
+  },
+  "krk9_assistant.py": {
+    "mtime": 1785004243.662315,
+    "ast_hash": "41168bb0179d90558a233fd04897c5b7",
+    "semantic_hash": "41168bb0179d90558a233fd04897c5b7"
+  },
+  "news_config.py": {
+    "mtime": 1785004243.663315,
+    "ast_hash": "53db37503f59b1c2568ea003c67d6217",
+    "semantic_hash": "53db37503f59b1c2568ea003c67d6217"
+  },
+  "news_gui_routes.py": {
+    "mtime": 1785004243.666315,
+    "ast_hash": "57fd9c28c7776037b7f6c3bb6d3afd67",
+    "semantic_hash": "57fd9c28c7776037b7f6c3bb6d3afd67"
+  },
+  "news_room.py": {
+    "mtime": 1785004243.6683152,
+    "ast_hash": "4431d7f38bb23be01fd22097343f1098",
+    "semantic_hash": "4431d7f38bb23be01fd22097343f1098"
+  },
+  "run_audio.sh": {
+    "mtime": 1785004243.669315,
+    "ast_hash": "b0a5fda9226ed62bc094c3d982154878",
+    "semantic_hash": "b0a5fda9226ed62bc094c3d982154878"
+  },
+  "run_server.py": {
+    "mtime": 1785004243.670315,
+    "ast_hash": "247a849f3f2033268bad7805a43671b3",
+    "semantic_hash": "247a849f3f2033268bad7805a43671b3"
+  },
+  "setup_wizard.py": {
+    "mtime": 1783458788.4850898,
+    "ast_hash": "adfee65dca3c6662d5eaa2b3cc2b7334",
+    "semantic_hash": "adfee65dca3c6662d5eaa2b3cc2b7334"
+  },
+  "start.sh": {
+    "mtime": 1783439241.2663097,
+    "ast_hash": "2191821f62d545aedea70e7a70e24685",
+    "semantic_hash": "2191821f62d545aedea70e7a70e24685"
+  },
+  "state_manager.py": {
+    "mtime": 1785004243.6723151,
+    "ast_hash": "b9f60266016c2537c721d73e1dfe8026",
+    "semantic_hash": "b9f60266016c2537c721d73e1dfe8026"
+  },
+  "tts_providers.py": {
+    "mtime": 1785004243.6733153,
+    "ast_hash": "fbc58cad8e460b13898daa8ada46dff4",
+    "semantic_hash": "fbc58cad8e460b13898daa8ada46dff4"
+  }
+}
