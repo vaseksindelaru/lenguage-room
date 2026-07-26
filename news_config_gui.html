@@ -843,12 +843,16 @@ async function resetConfig() {
 
 // ─── Refresh Briefing ────────────────
 async function refreshBriefing() {
-    showToast('⏳ Generating briefing (may take 30-60s)...', 'info');
+    showToast('⏳ Generating briefing...', 'info');
     try {
         const r = await fetch('/api/news/refresh', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ user_id: USER_ID })
         });
+        if (!r.ok) {
+            const tx = await r.text();
+            throw new Error(`${r.status}: ${tx}`);
+        }
         const d = await r.json();
         if (d.ok) {
             showToast('✅ Briefing generated!', 'success');
@@ -856,7 +860,9 @@ async function refreshBriefing() {
         } else {
             showToast('❌ ' + (d.error || 'Generation failed'), 'error');
         }
-    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+    } catch (e) {
+        showToast('❌ ' + e.message, 'error');
+    }
 }
 
 // ─── Helpers ─────────────────────────

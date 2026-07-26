@@ -129,7 +129,7 @@ async def news_models_handler(request):
     return web.json_response({"provider": provider, "models": models})
 
 async def news_refresh_handler(request):
-    """POST /api/news/refresh — generate briefing now (existing)."""
+    """POST /api/news/refresh — generate briefing now."""
     from aiohttp import web
     from state_manager import load_state, get_news_config
     from news_room import generate_briefing
