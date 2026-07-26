@@ -11,27 +11,28 @@ def _get_google_ai_key() -> str:
     return os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
 
 async def _call_google_ai(prompt: str, system: str = "", temperature: float = 0.6, max_tokens: int = 2000) -> str | None:
-    """Calls Google AI Studio API via generativeai. Returns text or None."""
+    """Calls Google AI Studio API via httpx direct REST call. Returns text or None."""
+    import httpx
     api_key = _get_google_ai_key()
     if not api_key:
         return None
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        messages = []
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        messages_content = []
         if system:
-            messages.append({"role": "user", "parts": [system + "\n\n" + prompt]})
+            messages_content.append({"role": "user", "parts": [{"text": system + "\n\n" + prompt}]})
         else:
-            messages.append({"role": "user", "parts": [prompt]})
-        response = model.generate_content(
-            messages,
-            generation_config=genai.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-            ),
-        )
-        return response.text
+            messages_content.append({"role": "user", "parts": [{"text": prompt}]})
+        payload = {"contents": messages_content}
+        headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        candidates = data.get("candidates", [])
+        if candidates:
+            return candidates[0]["content"]["parts"][0]["text"]
+        return None
     except Exception as e:
         logger.error(f"❌ Google AI Studio briefing falló: {e}")
         return None
