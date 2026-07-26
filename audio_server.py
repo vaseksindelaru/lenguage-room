@@ -697,6 +697,7 @@ async def start_audio_server():
 
     # ─── News Room API ────────────────────────────────────────────────
     news_briefing_route = app.router.add_get('/api/news/briefing', news_briefing_handler)
+    from news_gui_routes import news_refresh_handler
     news_refresh_route = app.router.add_post('/api/news/refresh', news_refresh_handler)
     cors.add(news_briefing_route)
     cors.add(news_refresh_route)
@@ -721,11 +722,6 @@ async def start_audio_server():
     cors.add(config_reset_route)
     cors.add(test_fetch_route)
     cors.add(models_route)
-
-    # ─── Refresh Route (use news_gui_routes version with timeout/error handling) ──
-    from news_gui_routes import news_refresh_handler as gui_refresh_handler
-    refresh_route = app.router.add_post('/api/news/refresh', gui_refresh_handler)
-    cors.add(refresh_route)
 
     # ─── Assistant API ────────────────────────────────────────────────
     assistant_chat_route = app.router.add_post('/api/assistant/chat', assistant_chat_handler)
