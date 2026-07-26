@@ -721,6 +721,9 @@ async def start_audio_server():
     cors.add(config_reset_route)
     cors.add(test_fetch_route)
     cors.add(models_route)
+    from news_gui_routes import news_refresh_handler
+    refresh_route = app.router.add_post('/api/news/refresh', news_refresh_handler)
+    cors.add(refresh_route)
 
     # ─── Assistant API ────────────────────────────────────────────────
     assistant_chat_route = app.router.add_post('/api/assistant/chat', assistant_chat_handler)
