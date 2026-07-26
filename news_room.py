@@ -9,12 +9,10 @@ _google_ai_creds_cache: Dict = {}
 
 def _get_google_ai_key() -> str:
     """Returns the Google AI Studio API key from credentials config, then env/.env."""
-    # First try credentials from config (passed via agent_cfg)
     creds = _google_ai_creds_cache.get("credentials", {})
     key = creds.get("google_ai_studio_key", "")
     if key:
         return key
-    # Fall back to environment variable
     return os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
 
 async def _call_google_ai(prompt: str, system: str = "", temperature: float = 0.6, max_tokens: int = 2000) -> str | None:
@@ -68,10 +66,7 @@ async def fetch_rss_items(sources: List[Dict], max_per_source: int = 5) -> List[
 def build_briefing_prompt(items: List[Dict], max_items: int, agent_cfg: Dict = None) -> str:
     if agent_cfg is None:
         agent_cfg = {}
-    llm_model = agent_cfg.get("llm_model", "z-ai/glm-5.1")
-    target_language = agent_cfg.get("target_language", "es")
     system_prompt = agent_cfg.get("system_prompt", "")
-
     lines = [f"{i+1}. [{it['source']}] {it['title']}\n   {it['summary'][:200]}\n   {it['link']}"
              for i, it in enumerate(items[:max_items])]
     return (
@@ -80,28 +75,33 @@ def build_briefing_prompt(items: List[Dict], max_items: int, agent_cfg: Dict = N
     )
 
 async def generate_briefing(uid: str) -> str:
-    """Genera y guarda el briefing del usuario. Devuelve el markdown."""
+    """Generate a news briefing using the configured LLM provider."""
+    import asyncio
     from state_manager import load_state, save_state, get_news_config
-    from bot import call_openrouter
+    from news_config import LLM_MODELS_BY_PROVIDER, LLM_DEFAULT_MODEL
 
     state = load_state()
     cfg = get_news_config(state, uid)
     sources = cfg.get("sources", [])
     max_items = cfg.get("output", {}).get("max_briefing_items", 6)
+    agent_cfg = cfg.get("agent", {})
+
+    # Cache Google AI Studio credentials for _get_google_ai_key()
+    global _google_ai_creds_cache
+    _google_ai_creds_cache = cfg.get("credentials", {})
+
+    # Collect news items
     items = await fetch_rss_items(sources, 5)
+    temperature = agent_cfg.get("temperature", 0.6)
+    llm_provider = agent_cfg.get("llm_provider", "openrouter")
+    llm_model = agent_cfg.get("llm_model", LLM_DEFAULT_MODEL)
+    api_key = agent_cfg.get("openrouter_api_key", "")
 
     if not items:
         md = f"# ☕ Briefing {datetime.now():%Y-%m-%d}\n\n⚠️ No se pudieron descargar noticias hoy."
     else:
-        agent_cfg = cfg.get("agent", {})
-        # Cache Google AI Studio credentials for _get_google_ai_key()
-        global _google_ai_creds_cache
-        _google_ai_creds_cache = cfg.get("credentials", {})
         prompt = build_briefing_prompt(items, max_items, agent_cfg)
-        temperature = agent_cfg.get("temperature", 0.6)
-        llm_provider = agent_cfg.get("llm_provider", "openrouter")
         body = None
-        # Try the selected provider first, then fall back
         providers_to_try = []
         if llm_provider == "google_ai_studio":
             providers_to_try = ["google_ai_studio", "openrouter"]
@@ -117,31 +117,36 @@ async def generate_briefing(uid: str) -> str:
                             "You are the news briefing agent for KRK-9. "
                             "Output ONLY markdown, no preamble."),
                         temperature=temperature,
+                        max_tokens=agent_cfg.get("max_tokens", 2000),
                     )
                 else:
+                    from bot import call_openrouter
                     body = await call_openrouter(
                         [{"role": "user", "content": prompt}],
                         system=agent_cfg.get("system_prompt",
                             "You are the news briefing agent for KRK-9. "
                             "Output ONLY markdown, no preamble."),
                         temperature=temperature,
-                        max_tokens=agent_cfg.get("max_tokens", 2000),
+                        max_tokens=agent_cfg.get("max_tokens", 300),
+                        provider_override="" if provider != "openrouter" else None,
+                        model_override=llm_model,
                     )
                 if body is not None:
                     break
             except Exception as e:
                 logger.warning(f"⚠️ {provider} briefing falló: {e}")
+
         if body is None:
             logger.error("❌ Ambos LLM fallaron")
             body = "(LLM no disponible — lista cruda)\n" + "\n".join(f"- {i['title']} ({i['source']})" for i in items)
 
         md = (f"---\ntype: krk9-news-briefing\ndate: \"{datetime.now():%Y-%m-%d}\"\n"
-              f"user: \"{uid}\"\n---\n\n# ☕ Morning Briefing — {datetime.now():%Y-%m-%d}\n\n{body}\n")
+              f"user: \"{uid}\"---\n\n# ☕ Morning Briefing — {datetime.now():%Y-%m-%d}\n\n{body}\n")
 
     # Guardar en state
     user = state.setdefault("users", {}).setdefault(uid, {})
     user.setdefault("news_history", []).insert(0, {"date": datetime.now().isoformat(), "markdown": md})
-    user["news_history"] = user["news_history"][:30]     # conservar 30
+    user["news_history"] = user["news_history"][:30]
     # Marcar que hoy ya corrió
     for r in user.get("rooms", []):
         if r.get("type") == "news":
