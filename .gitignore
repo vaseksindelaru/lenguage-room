@@ -9,6 +9,9 @@ venv/
 env/
 ENV/
 
+# Graphify analysis outputs (local only)
+graphify-out/
+
 # Environment files
 .env
 .env.local
