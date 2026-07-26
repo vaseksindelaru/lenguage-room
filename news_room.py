@@ -99,26 +99,38 @@ async def generate_briefing(uid: str) -> str:
         _google_ai_creds_cache = cfg.get("credentials", {})
         prompt = build_briefing_prompt(items, max_items, agent_cfg)
         temperature = agent_cfg.get("temperature", 0.6)
+        llm_provider = agent_cfg.get("llm_provider", "openrouter")
         body = None
-        try:
-            body = await call_openrouter(
-                [{"role": "user", "content": prompt}],
-                system=agent_cfg.get("system_prompt",
-                    "You are the news briefing agent for KRK-9. "
-                    "Output ONLY markdown, no preamble."),
-                temperature=temperature,
-                max_tokens=agent_cfg.get("max_tokens", 2000),
-            )
-        except Exception as e:
-            logger.warning(f"⚠️ OpenRouter briefing falló: {e}, intentando Google AI Studio...")
-        if body is None:
-            body = await _call_google_ai(
-                prompt,
-                system=agent_cfg.get("system_prompt",
-                    "You are the news briefing agent for KRK-9. "
-                    "Output ONLY markdown, no preamble."),
-                temperature=temperature,
-            )
+        # Try the selected provider first, then fall back
+        providers_to_try = []
+        if llm_provider == "google_ai_studio":
+            providers_to_try = ["google_ai_studio", "openrouter"]
+        else:
+            providers_to_try = ["openrouter", "google_ai_studio"]
+
+        for provider in providers_to_try:
+            try:
+                if provider == "google_ai_studio":
+                    body = await _call_google_ai(
+                        prompt,
+                        system=agent_cfg.get("system_prompt",
+                            "You are the news briefing agent for KRK-9. "
+                            "Output ONLY markdown, no preamble."),
+                        temperature=temperature,
+                    )
+                else:
+                    body = await call_openrouter(
+                        [{"role": "user", "content": prompt}],
+                        system=agent_cfg.get("system_prompt",
+                            "You are the news briefing agent for KRK-9. "
+                            "Output ONLY markdown, no preamble."),
+                        temperature=temperature,
+                        max_tokens=agent_cfg.get("max_tokens", 2000),
+                    )
+                if body is not None:
+                    break
+            except Exception as e:
+                logger.warning(f"⚠️ {provider} briefing falló: {e}")
         if body is None:
             logger.error("❌ Ambos LLM fallaron")
             body = "(LLM no disponible — lista cruda)\n" + "\n".join(f"- {i['title']} ({i['source']})" for i in items)
