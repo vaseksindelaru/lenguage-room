@@ -131,6 +131,7 @@ DEFAULT_NEWS_CONFIG = {
         "newsapi_key": "",
         "guardian_api_key": "",
         "openweather_api_key": "",
+        "openrouter_api_key": "",
         "google_ai_studio_key": "",
     },
     "debug": {
