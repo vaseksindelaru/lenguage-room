@@ -18,7 +18,7 @@ async def _call_google_ai(prompt: str, system: str = "", temperature: float = 0.
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         messages = []
         if system:
             messages.append({"role": "user", "parts": [system + "\n\n" + prompt]})
