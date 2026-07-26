@@ -455,7 +455,7 @@ async def _warmup_ollama():
 
 
 async def call_openrouter(messages: list, system: str = "", temperature: float = 0.8,
-                         provider_override: str = None, model_override: str = None) -> str:
+                         provider_override: str = None, model_override: str = None, max_tokens: int = 300) -> str:
     """
     Router con fallback automático: Cerebras → Groq → OpenRouter → Ollama local.
     Devuelve el texto generado o None si todo falla.
@@ -493,7 +493,7 @@ async def call_openrouter(messages: list, system: str = "", temperature: float =
                     messages=payload_messages,
                     model=provider["model"],
                     temperature=temperature,
-                    max_tokens=300,
+                    max_tokens=max_tokens,
                     timeout=provider.get("timeout", 120),
                     url=provider["url"],
                 )
@@ -503,7 +503,7 @@ async def call_openrouter(messages: list, system: str = "", temperature: float =
                     model=provider["model"],
                     messages=payload_messages,
                     temperature=temperature,
-                    max_tokens=300,
+                    max_tokens=max_tokens,
                     timeout=provider.get("timeout", 15),
                 )
                 content = resp.choices[0].message.content
