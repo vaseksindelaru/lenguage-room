@@ -6,7 +6,51 @@ from pathlib import Path
 logger = logging.getLogger("news_config")
 MODULE_DIR = Path(__file__).parent
 
-# ─── Default configuration schema ────────────────────────────────────────────
+# ─── Provider → models mapping ────────────────────────────────────────────
+# Sync: each provider's dropdown models are defined here.
+# news_gui_routes.py /news/models endpoint returns models for the selected provider.
+# news_room.py uses llm_provider + llm_model from config to pick the right LLM.
+
+LLM_MODELS_BY_PROVIDER = {
+    "openrouter": [
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "mistralai/mistral-small-3.1-24b-instruct-2503:free",
+        "qwen/qwen2.5-72b-instruct:free",
+        "anthropic/claude-sonnet-4-20250514",
+        "anthropic/claude-haiku-4-20250514",
+    ],
+    "google_ai_studio": [
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+    ],
+    "cerebras": [
+        "gpt-oss-120b",
+    ],
+    "groq": [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "mixtral-8x7b-32768",
+    ],
+    "ollama": [
+        "qwen2.5:3b",
+        "qwen2.5:7b",
+        "llama3.1:8b",
+        "mistral:7b",
+    ],
+}
+
+# Default model per provider (used when config has no model yet)
+LLM_DEFAULT_MODEL = {
+    "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
+    "google_ai_studio": "gemini-2.0-flash",
+    "cerebras": "gpt-oss-120b",
+    "groq": "llama-3.1-8b-instant",
+    "ollama": "qwen2.5:3b",
+}
+
+# ─── Default configuration schema ─────────────────────────────────────────
 DEFAULT_NEWS_CONFIG = {
     "version": 1,
     "scheduling": {
@@ -35,7 +79,7 @@ DEFAULT_NEWS_CONFIG = {
          "keywords_filter": "", "exclude_keywords": "", "language": "en"},
     ],
     "agent": {
-        "llm_model": "z-ai/glm-5.1",
+        "llm_model": "meta-llama/llama-3.3-70b-instruct:free",
         "llm_provider": "openrouter",
         "system_prompt": (
             "Eres el agente de recolección de noticias de KRK-9. "
@@ -96,7 +140,7 @@ DEFAULT_NEWS_CONFIG = {
     },
 }
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+# ─── Helpers ───────────────────────────────────────────────────────────────
 
 def get_news_config(state, uid):
     """Devuelve la config de noticias del usuario (o defaults)."""
@@ -135,4 +179,8 @@ def validate_news_config(config):
         seen_ids.add(sid)
         if not s.get("url", "").startswith(("http://", "https://")):
             raise ValueError(f"Source {sid}: invalid URL")
+    # Validate llm_provider is known
+    llm_provider = config.get("agent", {}).get("llm_provider", "openrouter")
+    if llm_provider not in LLM_MODELS_BY_PROVIDER:
+        raise ValueError(f"Unknown llm_provider: {llm_provider}")
     return True

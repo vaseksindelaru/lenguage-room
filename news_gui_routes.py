@@ -120,6 +120,14 @@ async def news_test_fetch_handler(request):
         "sources_total": len(cfg.get("sources", [])),
     })
 
+async def news_models_handler(request):
+    """GET /api/news/models?provider=<name> — return models for a provider."""
+    from aiohttp import web
+    from news_config import LLM_MODELS_BY_PROVIDER
+    provider = request.query.get("provider", "openrouter")
+    models = LLM_MODELS_BY_PROVIDER.get(provider, [])
+    return web.json_response({"provider": provider, "models": models})
+
 async def news_refresh_handler(request):
     """POST /api/news/refresh — generate briefing now (existing)."""
     from aiohttp import web
@@ -157,5 +165,6 @@ def register_news_routes(app):
     app.router.add_post('/api/news/config-validate', news_config_validate_handler)
     app.router.add_post('/api/news/config-reset', news_config_reset_handler)
     app.router.add_post('/api/news/test-fetch', news_test_fetch_handler)
+    app.router.add_get('/api/news/models', news_models_handler)
     app.router.add_post('/api/news/refresh', news_refresh_handler)
     app.router.add_get('/api/news/briefing', news_briefing_handler)

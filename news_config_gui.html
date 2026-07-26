@@ -197,11 +197,13 @@
                 </div>
             </div>
 
-            <div class="inline-fields">
-                <div class="field">
-                    <label>Model</label>
-                    <input type="text" id="agent_model" placeholder="z-ai/glm-5.1">
-                </div>
+            <div class="field">
+                <label>Model</label>
+                <select id="agent_model">
+                    <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct:free</option>
+                </select>
+                <div class="hint" id="agent_model_hint">Models update automatically when you change the provider above.</div>
+            </div>
 
             <div class="inline-fields">
                 <div class="field">
@@ -461,6 +463,25 @@
 const USER_ID = 'legacy_vaclav';
 let currentConfig = null;
 
+// ─── Provider/Model sync ───────────────────────────
+document.getElementById('agent_provider').addEventListener('change', function() {
+    const provider = this.value;
+    const modelSelect = document.getElementById('agent_model');
+    fetch(`/api/news/models?provider=${encodeURIComponent(provider)}`)
+        .then(r => r.json())
+        .then(data => {
+            const models = data.models || [];
+            modelSelect.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                modelSelect.appendChild(opt);
+            });
+        })
+        .catch(() => {});
+});
+
 // ─── Toast ───────────────────────────
 function showToast(msg, type = 'info') {
     const t = document.getElementById('toast');
@@ -522,7 +543,38 @@ function populateForm(cfg) {
 
     // Agent
     document.getElementById('agent_provider').value = a.llm_provider ?? 'openrouter';
-    document.getElementById('agent_model').value = a.llm_model ?? '';
+    // Keep model for now — will be refreshed dynamically
+    
+    // Load models for the current provider
+    const provider = a.llm_provider ?? 'openrouter';
+    const modelSelect = document.getElementById('agent_model');
+    // Keep current selection if it's valid for this provider
+    const currentModel = a.llm_model ?? '';
+    
+    fetch(`/api/news/models?provider=${encodeURIComponent(provider)}`)
+        .then(r => r.json())
+        .then(data => {
+            const models = data.models || [];
+            modelSelect.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (m === currentModel || (!currentModel && m === data.models[0])) {
+                    opt.selected = true;
+                }
+                modelSelect.appendChild(opt);
+            });
+            // If currentModel not in list, add it
+            if (currentModel && !models.includes(currentModel)) {
+                const opt = document.createElement('option');
+                opt.value = currentModel;
+                opt.textContent = currentModel + ' (custom)';
+                opt.selected = true;
+                modelSelect.appendChild(opt);
+            }
+        })
+        .catch(() => {});
     document.getElementById('agent_temp').value = a.temperature ?? 0.6;
     document.getElementById('agent_max_tokens').value = a.max_tokens ?? 2000;
     document.getElementById('agent_target_lang').value = a.target_language ?? 'es';
