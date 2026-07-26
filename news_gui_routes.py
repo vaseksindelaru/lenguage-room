@@ -131,6 +131,7 @@ async def news_models_handler(request):
 async def news_refresh_handler(request):
     """POST /api/news/refresh — generate briefing now."""
     from aiohttp import web
+    import asyncio
     from state_manager import load_state, get_news_config
     from news_room import generate_briefing
     try:
@@ -139,7 +140,13 @@ async def news_refresh_handler(request):
         return web.json_response({"error": "Invalid JSON"}, status=400)
 
     uid = body.get("user_id", "legacy_vaclav")
-    md = await generate_briefing(uid)
+    try:
+        md = await asyncio.wait_for(generate_briefing(uid), timeout=120)
+    except asyncio.TimeoutError:
+        return web.json_response({"error": "Briefing generation timed out (120s)"}, status=504)
+    except Exception as e:
+        logger.error(f"Briefing generation failed: {e}")
+        return web.json_response({"error": str(e)}, status=500)
     return web.json_response({"ok": True, "briefing": md})
 
 async def news_briefing_handler(request):
