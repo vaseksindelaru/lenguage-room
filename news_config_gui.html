@@ -422,6 +422,11 @@
                 <input type="password" id="cred_google_ai" placeholder="AQ.***">
                 <div class="hint">Gemini API key from Google AI Studio. Used as fallback when OpenRouter is unavailable.</div>
             </div>
+            <div class="field">
+                <label>OpenRouter API Key</label>
+                <input type="password" id="cred_openrouter" placeholder="sk-or-v1-***">
+                <div class="hint">OpenRouter API key. Required for OpenRouter, Cerebras, Groq, and Ollama providers.</div>
+            </div>
         </div>
 
         <div class="section">
@@ -618,6 +623,9 @@ function populateForm(cfg) {
     document.getElementById('cred_guardian').value = cred.guardian_api_key ?? '';
     document.getElementById('cred_weather').value = cred.openweather_api_key ?? '';
     document.getElementById('cred_google_ai').value = cred.google_ai_studio_key ?? '';
+
+    // LLM API Keys
+    document.getElementById('cred_openrouter').value = cred.openrouter_api_key ?? '';
 
     // Debug
     document.getElementById('debug_log').value = d.log_level ?? 'INFO';
