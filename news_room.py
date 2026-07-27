@@ -111,6 +111,7 @@ async def generate_briefing(uid: str) -> str:
         for provider in providers_to_try:
             try:
                 if provider == "google_ai_studio":
+                    from news_room import _call_google_ai
                     body = await _call_google_ai(
                         prompt,
                         system=agent_cfg.get("system_prompt",
@@ -120,7 +121,7 @@ async def generate_briefing(uid: str) -> str:
                         max_tokens=agent_cfg.get("max_tokens", 2000),
                     )
                 else:
-                    from bot import call_openrouter
+                    from llm_client import call_openrouter
                     body = await call_openrouter(
                         [{"role": "user", "content": prompt}],
                         system=agent_cfg.get("system_prompt",
