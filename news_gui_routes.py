@@ -164,6 +164,72 @@ async def news_briefing_handler(request):
         "message": "No briefing of today. Use POST /api/news/refresh."
     })
 
+async def news_chat_handler(request):
+    """POST /api/news/chat — follow-up question about the latest briefing."""
+    from aiohttp import web
+    import asyncio
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    uid = body.get("user_id", "legacy_vaclav")
+    message = (body.get("message") or "").strip()
+    if not message:
+        return web.json_response({"error": "Missing message"}, status=400)
+
+    try:
+        from news_room import chat_followup
+        result = await asyncio.wait_for(chat_followup(uid, message), timeout=60)
+    except asyncio.TimeoutError:
+        return web.json_response({"error": "Chat response timed out (60s)"}, status=504)
+    except Exception as e:
+        logger.error(f"News chat failed: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+    return web.json_response(result)
+
+
+async def news_like_handler(request):
+    """POST /api/news/like — like/bookmark a news article."""
+    from aiohttp import web
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    uid = body.get("user_id", "legacy_vaclav")
+    article_index = body.get("article_index")
+    article_url = body.get("article_url")
+
+    if article_index is None and not article_url:
+        return web.json_response({"error": "Missing article_index or article_url"}, status=400)
+
+    try:
+        from news_room import record_like
+        if article_index is not None:
+            article_index = int(article_index)
+        result = record_like(uid, article_index=article_index, article_url=article_url)
+    except Exception as e:
+        logger.error(f"News like failed: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+    return web.json_response(result)
+
+
+async def news_interests_handler(request):
+    """GET /api/news/interests?user_id=<uid> — get user's interest profile."""
+    from aiohttp import web
+    uid = request.query.get("user_id", "legacy_vaclav")
+    try:
+        from news_room import get_user_interests
+        result = get_user_interests(uid)
+    except Exception as e:
+        logger.error(f"News interests failed: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+    return web.json_response(result)
+
+
 def register_news_routes(app):
     """Register all news room routes on the app."""
     app.router.add_get('/news-config', news_gui_handler)
@@ -175,3 +241,6 @@ def register_news_routes(app):
     app.router.add_get('/api/news/models', news_models_handler)
     app.router.add_post('/api/news/refresh', news_refresh_handler)
     app.router.add_get('/api/news/briefing', news_briefing_handler)
+    app.router.add_post('/api/news/chat', news_chat_handler)
+    app.router.add_post('/api/news/like', news_like_handler)
+    app.router.add_get('/api/news/interests', news_interests_handler)

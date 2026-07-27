@@ -50,6 +50,16 @@ LLM_DEFAULT_MODEL = {
     "ollama": "qwen2.5:3b",
 }
 
+# ─── Valid summarize styles ────────────────────────────────────────────────
+SUMMARIZE_STYLES = [
+    "markdown_sections",   # Structured sections: Top News, Tasks, Vocabulary, Discussion
+    "numbered_list",       # Numbered 1–N list, one paragraph per item
+    "bullet_points",       # Bullet-point format, title + one-liner
+    "conversational",      # Chat-style: bot "reads" news naturally, invites questions
+    "detailed",            # Longer, in-depth summaries with context per story
+    "quick_summary",       # Very short TL;DR (3-5 sentences total)
+]
+
 # ─── Default configuration schema ─────────────────────────────────────────
 DEFAULT_NEWS_CONFIG = {
     "version": 1,
@@ -193,4 +203,8 @@ def validate_news_config(config):
     llm_provider = config.get("agent", {}).get("llm_provider", "openrouter")
     if llm_provider not in LLM_MODELS_BY_PROVIDER:
         raise ValueError(f"Unknown llm_provider: {llm_provider}")
+    # Validate summarize_style
+    style = config.get("agent", {}).get("summarize_style", "markdown_sections")
+    if style not in SUMMARIZE_STYLES:
+        raise ValueError(f"Unknown summarize_style: {style}. Valid: {SUMMARIZE_STYLES}")
     return True

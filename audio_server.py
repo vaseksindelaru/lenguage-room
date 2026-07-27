@@ -717,6 +717,7 @@ async def start_audio_server():
         news_gui_handler, news_config_get_handler, news_config_post_handler,
         news_config_validate_handler, news_config_reset_handler,
         news_test_fetch_handler, news_models_handler,
+        news_chat_handler, news_like_handler, news_interests_handler,
     )
     gui_route = app.router.add_get('/news-config', news_gui_handler)
     config_get_route = app.router.add_get('/api/news/config', news_config_get_handler)
@@ -725,6 +726,9 @@ async def start_audio_server():
     config_reset_route = app.router.add_post('/api/news/config-reset', news_config_reset_handler)
     test_fetch_route = app.router.add_post('/api/news/test-fetch', news_test_fetch_handler)
     models_route = app.router.add_get('/api/news/models', news_models_handler)
+    news_chat_route = app.router.add_post('/api/news/chat', news_chat_handler)
+    news_like_route = app.router.add_post('/api/news/like', news_like_handler)
+    news_interests_route = app.router.add_get('/api/news/interests', news_interests_handler)
     cors.add(gui_route)
     cors.add(config_get_route)
     cors.add(config_post_route)
@@ -732,6 +736,10 @@ async def start_audio_server():
     cors.add(config_reset_route)
     cors.add(test_fetch_route)
     cors.add(models_route)
+    cors.add(news_chat_route)
+    cors.add(news_like_route)
+    cors.add(news_interests_route)
+
 
     # ─── Assistant API ────────────────────────────────────────────────
     assistant_chat_route = app.router.add_post('/api/assistant/chat', assistant_chat_handler)

@@ -166,6 +166,7 @@
         <button class="tab" data-tab="agent"><span class="tab-icon">🧠</span> Agent</button>
         <button class="tab" data-tab="output"><span class="tab-icon">📋</span> Output</button>
         <button class="tab" data-tab="advanced"><span class="tab-icon">⚙️</span> Advanced</button>
+        <button class="tab" data-tab="briefing"><span class="tab-icon">📰</span> Briefing</button>
     </div>
 
     <!-- ════════ Sources Panel ════════ -->
@@ -227,10 +228,12 @@
             <div class="field">
                 <label>Summarize Style</label>
                 <select id="agent_style">
-                    <option value="bullet">Bullet list</option>
-                    <option value="narrative">Narrative paragraph</option>
                     <option value="markdown_sections">Markdown sections</option>
-                    <option value="chat">Chat conversation</option>
+                    <option value="numbered_list">Numbered list</option>
+                    <option value="bullet_points">Bullet points</option>
+                    <option value="conversational">Conversational chat</option>
+                    <option value="detailed">Detailed analysis</option>
+                    <option value="quick_summary">Quick summary (TL;DR)</option>
                 </select>
             </div>
 
@@ -449,6 +452,31 @@
                     <input type="checkbox" id="debug_test_mode">
                     <label for="debug_test_mode">Test mode (mock sources)</label>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════ Briefing Panel ════════ -->
+    <div class="panel" id="panel-briefing">
+        <div class="section">
+            <div class="section-title">Your Interests</div>
+            <div id="interestsBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+                <span class="badge badge-yellow" style="opacity:.5">No interests yet — like articles to train</span>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-title">Latest Briefing</div>
+            <div id="briefingDisplay" style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;padding:16px;min-height:120px;font-size:.85rem;line-height:1.6;color:#ccc;white-space:pre-wrap;overflow-y:auto;max-height:500px;">
+                <span style="color:#666">No briefing yet. Click "📰 Generate Briefing" below.</span>
+            </div>
+            <div id="articleLikes" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+        </div>
+        <div class="section">
+            <div class="section-title">💬 Chat — Ask about the news</div>
+            <div id="chatHistory" style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;padding:12px;min-height:60px;max-height:300px;overflow-y:auto;margin-bottom:10px;font-size:.85rem;display:none;"></div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="chatInput" placeholder="Ask about the news... e.g. 'give me details about the first article'" style="flex:1;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-family:'Inter',sans-serif;font-size:.85rem;outline:none;" onkeydown="if(event.key==='Enter')sendChat()">
+                <button class="btn btn-primary" onclick="sendChat()" id="btnChat">Send</button>
             </div>
         </div>
     </div>
@@ -851,6 +879,8 @@ async function resetConfig() {
 }
 
 // ─── Refresh Briefing ────────────────
+let lastArticles = [];
+
 async function refreshBriefing() {
     showToast('⏳ Generating briefing...', 'info');
     try {
@@ -858,29 +888,118 @@ async function refreshBriefing() {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ user_id: USER_ID })
         });
-        if (!r.ok) {
-            const tx = await r.text();
-            throw new Error(`${r.status}: ${tx}`);
-        }
+        if (!r.ok) { const tx = await r.text(); throw new Error(`${r.status}: ${tx}`); }
         const d = await r.json();
         if (d.ok) {
             showToast('✅ Briefing generated!', 'success');
-            // Update the briefing display area immediately with the new content
-            const briefingEl = document.getElementById('briefingDisplay');
-            if (briefingEl) {
-                briefingEl.innerHTML = d.briefing;
-            }
-            // Also store the latest briefing in currentConfig for persistence
-            if (currentConfig) {
-                currentConfig._lastBriefing = d.briefing;
-                currentConfig._lastBriefingDate = new Date().toISOString();
-            }
+            const el = document.getElementById('briefingDisplay');
+            if (el) el.textContent = d.briefing;
+            // Switch to briefing tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelector('[data-tab="briefing"]').classList.add('active');
+            document.getElementById('panel-briefing').classList.add('active');
+            // Clear chat
+            const ch = document.getElementById('chatHistory');
+            ch.style.display = 'none'; ch.innerHTML = '';
+            // Render like buttons from state
+            loadBriefingArticles();
+            loadInterests();
         } else {
             showToast('❌ ' + (d.error || 'Generation failed'), 'error');
         }
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function loadBriefingArticles() {
+    try {
+        const r = await fetch(`/api/news/briefing?user_id=${USER_ID}`);
+        const d = await r.json();
+        // Parse article titles from briefing text (rough extraction)
+        const md = d.briefing || '';
+        const el = document.getElementById('articleLikes');
+        if (!el) return;
+        // We'll use indices 0-5 as generic like buttons
+        const lines = md.split('\n').filter(l => l.match(/^\*\*|^\d+\.|^•|^-\s+\*\*/));
+        const count = Math.min(lines.length || 6, 6);
+        el.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary';
+            btn.style.cssText = 'font-size:.75rem;padding:5px 10px;';
+            btn.textContent = `❤️ Article ${i+1}`;
+            btn.onclick = () => likeArticle(i);
+            el.appendChild(btn);
+        }
+    } catch(e) {}
+}
+
+// ─── Chat ────────────────────────────
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = (input.value || '').trim();
+    if (!msg) return;
+    input.value = '';
+    const ch = document.getElementById('chatHistory');
+    ch.style.display = 'block';
+    ch.innerHTML += `<div style="margin-bottom:8px"><span style="color:#5865f2;font-weight:600">You:</span> ${esc(msg)}</div>`;
+    ch.innerHTML += `<div style="margin-bottom:8px;color:#666" id="chatTyping">⏳ Thinking...</div>`;
+    ch.scrollTop = ch.scrollHeight;
+    try {
+        const r = await fetch('/api/news/chat', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID, message: msg })
+        });
+        const d = await r.json();
+        const typing = document.getElementById('chatTyping');
+        if (typing) typing.remove();
+        const reply = d.reply || d.error || 'No response';
+        ch.innerHTML += `<div style="margin-bottom:8px"><span style="color:#57f287;font-weight:600">KRK-9:</span> ${esc(reply)}</div>`;
+        if (d.sources && d.sources.length) {
+            const links = d.sources.map(s => `<a href="${esc(s.link)}" target="_blank" style="color:#5865f2;font-size:.75rem">${esc(s.title)}</a>`).join(', ');
+            ch.innerHTML += `<div style="margin-bottom:8px;font-size:.75rem;color:#888">📎 ${links}</div>`;
+        }
+        ch.scrollTop = ch.scrollHeight;
     } catch (e) {
-        showToast('❌ ' + e.message, 'error');
+        const typing = document.getElementById('chatTyping');
+        if (typing) typing.remove();
+        ch.innerHTML += `<div style="color:#ed4245;margin-bottom:8px">❌ ${esc(e.message)}</div>`;
     }
+}
+
+// ─── Like ────────────────────────────
+async function likeArticle(idx) {
+    try {
+        const r = await fetch('/api/news/like', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: USER_ID, article_index: idx })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast(`❤️ Liked: ${d.article_title || 'Article ' + (idx+1)}`, 'success');
+            loadInterests();
+        } else {
+            showToast('❌ ' + (d.error || 'Like failed'), 'error');
+        }
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+// ─── Interests ───────────────────────
+async function loadInterests() {
+    try {
+        const r = await fetch(`/api/news/interests?user_id=${USER_ID}`);
+        const d = await r.json();
+        const el = document.getElementById('interestsBadges');
+        if (!el) return;
+        const topics = d.top_topics || [];
+        if (topics.length === 0) {
+            el.innerHTML = '<span class="badge badge-yellow" style="opacity:.5">No interests yet — like articles to train</span>';
+        } else {
+            el.innerHTML = topics.map(t =>
+                `<span class="badge badge-green">${esc(t)}</span>`
+            ).join('') + `<span class="badge" style="background:rgba(88,101,242,0.15);color:#5865f2">${d.liked_count || 0} liked</span>`;
+        }
+    } catch(e) {}
 }
 
 // ─── Helpers ─────────────────────────
@@ -888,6 +1007,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s || 
 
 // Init
 loadConfig();
+loadInterests();
 </script>
 </body>
 </html>
