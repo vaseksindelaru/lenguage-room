@@ -865,7 +865,16 @@ async function refreshBriefing() {
         const d = await r.json();
         if (d.ok) {
             showToast('✅ Briefing generated!', 'success');
-            setTimeout(() => location.href = '/news', 1500);
+            // Update the briefing display area immediately with the new content
+            const briefingEl = document.getElementById('briefingDisplay');
+            if (briefingEl) {
+                briefingEl.innerHTML = d.briefing;
+            }
+            // Also store the latest briefing in currentConfig for persistence
+            if (currentConfig) {
+                currentConfig._lastBriefing = d.briefing;
+                currentConfig._lastBriefingDate = new Date().toISOString();
+            }
         } else {
             showToast('❌ ' + (d.error || 'Generation failed'), 'error');
         }
