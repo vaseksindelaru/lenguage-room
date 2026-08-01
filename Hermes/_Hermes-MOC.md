@@ -5,33 +5,61 @@ tags:
   - proyecto/hermes
   - moc
 created: 2026-07-20
+last_updated: 2026-08-01
 ---
 
 # 🟣 Hermes + Obsidian (Mejoras & Aprendizaje) — Índice del Proyecto (MOC)
 
 > [!info] Punto de entrada del proyecto. Todo lo de mejoras a Hermes y
 > aprender a usar Obsidian vive bajo `Hermes/`.
-> Cada sesión va en `Hermes/Sessions/` con tag `#proyecto/hermes`.
+> Cada sesión va en `Hermes/sessions/` con tag `#proyecto/hermes`.
 
 ## 📌 Qué es
 Configuración, mejoras y flujo de trabajo de Hermes Agent + aprender a usar
 Obsidian como "segundo cerebro" compartido con Hermes.
 
-## 🔑 Datos clave
+## 🔑 Datos clave (fuente de verdad)
 - Vault REAL: `~/Documents/Obsidian-Vault` (guion, sin acento). ⚠️ NO confundir
   con `~/Documentos/Obsidian Vault` (vault de prueba vacío).
 - `OBSIDIAN_VAULT_PATH` en `~/.hermes/.env`
 - Obsidian AppImage v1.12.7 en `~/Applications/Obsidian.AppImage`
-- Regla de arranque: Hermes lee `Hermes/Sessions/` al iniciar sesión.
+- Regla de arranque: Hermes lee `Hermes/sessions/` al iniciar sesión.
+- **Metodología universal**: `Hermes/methodology/hermes-vault-methodology.md` — template para cualquier proyecto
 
 ## 🗂️ Sesiones
-- [[2026-07-20-organizacion-3-proyectos|2026-07-20 — Organización del vault en 3 proyectos]]
-- [[2026-07-19-obsidian-hermes|2026-07-19 — Instalación + flujo de trabajo]]
-- [[2026-07-19-bc-autoload|2026-07-19 (B+C) — Auto-lectura + limpieza de memoria]]
+- _(aún sin sesiones registradas — las nuevas irán apareciendo abajo)_
+- Ver todas: buscar `path:Hermes/sessions`
 
-## 🔗 Referencias
-- [[Welcome|Reglas de convivencia Hermes ↔ Obsidian]]
+## 📚 Learning (Clases/Tutoriales)
+- **Índice**: `learning/00-índice.md` (pendiente)
+- **01** — Hermes Basics (config, skills, tools)
+- **02** — Obsidian Integration (vault, MOC, sessions)
+- **03** — Vault Methodology (esta metodología universal)
 
-## ⏭️ Pendientes
-- [ ] Crear repo Git remoto (pospuesto hasta tener servidor)
-- [ ] Auto-sync (cron pull cada hora en servidor)
+> 📖 Lee en orden. Cada clase construye sobre la anterior.
+
+## 🔧 Development (Roadmap activo)
+- **Índice**: `development/00-roadmap.md` (pendiente)
+- **01** — Auto-load MOC context on session start (skill: cgalpha-vault-auto pattern)
+- **02** — Session continuation protocol (MOC → context injection)
+- **03** — Cross-project vault search skill
+
+## 🔗 Conocimiento aplicado
+- [[Hermes/methodology/hermes-vault-methodology.md|Metodología Universal Hermes Vault]]
+
+## ⏭️ Pendientes verificados
+- [ ] Crear repo Git remoto para vault
+- [ ] Migrar `Hermes/Sessions/` → `Hermes/sessions/` (lowercase)
+- [ ] Crear skill `hermes-vault-auto` desde template
+- [ ] Crear cron `hermes-moc-sync`
+- [ ] Aplicar metodología a KRK9/Discord-Bot project
+
+## 🔄 Auto-Update Workflow
+1. Skill `hermes-vault-auto` auto-loads on `Hermes/**` paths
+2. Cron `hermes-moc-sync` cada 15 min sincroniza MOC
+3. Git hook post-commit actualiza MOC en commits con cambios en sessions/
+4. Al guardar: `write_file(Hermes/sessions/...) → update_moc_sessions() → push`
+
+---
+
+*Actualizado a metodología universal 2026-08-01 — ver `Hermes/methodology/hermes-vault-methodology.md`*
