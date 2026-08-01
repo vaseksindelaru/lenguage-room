@@ -27,7 +27,9 @@ Obsidian como "segundo cerebro" compartido con Hermes.
 - **Metodología universal**: `Hermes/methodology/hermes-vault-methodology.md` — template para cualquier proyecto
 
 ## 🗂️ Sesiones
-- _(aún sin sesiones registradas — las nuevas irán apareciendo abajo)_
+- `Hermes/sessions/2026-07-20-organizacion-3-proyectos.md` — Organizacion 3 Proyectos
+- `Hermes/sessions/2026-07-19-obsidian-hermes.md` — Obsidian Hermes
+- `Hermes/sessions/2026-07-19-bc-autoload.md` — Bc Autoload
 - Ver todas: buscar `path:Hermes/sessions`
 
 ## 📚 Learning (Clases/Tutoriales)
