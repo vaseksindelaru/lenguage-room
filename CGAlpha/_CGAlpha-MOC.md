@@ -22,9 +22,7 @@ Sistema de trading algorítmico. BTCUSDT 5min, estrategia de triple coincidencia
 - Hay `.venv` en el proyecto — usar para pytest.
 
 ## 🗂️ Sesiones
-- `CGAlpha/sessions/2026-07-27_vault-learning-development.md` — Vault learning/development structure
-- `CGAlpha/sessions/2026-07-29-cloud-infra.md` — Cloud infra completa (R2, B2, DuckDB, Supabase, GitHub Actions)
-- `CGAlpha/sessions/2026-08-01-restart-cgalpha-fix.md` — Fix restart-cgalpha con protocolo completo + respuesta LLM externa
+- _(aún sin sesiones registradas — las nuevas irán apareciendo abajo)_
 - Ver todas: buscar `path:CGAlpha/sessions`
 
 ## 🔗 Conocimiento aplicado
