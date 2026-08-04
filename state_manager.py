@@ -125,12 +125,9 @@ DEFAULT_NEWS_CONFIG = {
 }
 
 def default_rooms() -> list:
-    """Salas por defecto de un usuario nuevo o migrado."""
-    return [
-        {"id": "conversation", "type": "conversation", "name": "English Practice", "enabled": True},
-        {"id": "news",         "type": "news",         "name": "Morning Briefing", "enabled": True,
-         "config": dict(DEFAULT_NEWS_CONFIG)},
-    ]
+    """Salas por defecto de un usuario nuevo o migrado.
+    Retorna lista vacía - las salas se crean bajo demanda."""
+    return []
 
 DEFAULT_STATE = {
     "version": 3,
