@@ -21,7 +21,26 @@
   .top-nav a.active { background: rgba(88,101,242,0.2); color: #5865f2; border-bottom: 2px solid #5865f2; }
   .top-nav .brand { color: #5865f2; font-size: 1.1rem; font-weight: 700; }
   .top-nav .nav-links { display: flex; gap: 6px; align-items: center; }
-
+  
+  .btn-create-room {
+      background: #5865f2;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+  }
+  .btn-create-room:hover {
+      background: #4752c4;
+      transform: translateY(-1px);
+  }
+  
   header { display: flex; justify-content: space-between; align-items: center; margin: 24px 24px 32px; }
   h1 { color: #5865f2; font-size: 1.5rem; }
   .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1000px; padding: 0 24px; }
@@ -53,10 +72,11 @@
 <nav class="top-nav">
     <a href="/" class="brand">🎧 KRK-9</a>
     <div class="nav-links">
-        <a href="/" class="active">🏠 Salas</a>
+        <a href="/" class="active">🏠 Rooms</a>
         <a href="/chat">💬 Practice</a>
         <a href="/news">📰 Briefing</a>
         <a href="/assistant">🤖 Assistant</a>
+        <button class="btn-create-room" onclick="alert('Create Room - not implemented yet')">➕ Create Room</button>
     </div>
 </nav>
 
