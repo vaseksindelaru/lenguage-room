@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎧 KRK-9 — Salas</title>
+<title>🎧 KRK-9 — Rooms</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,11 +59,96 @@
   #assistant-fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
     background: #5865f2; border: none; font-size: 1.6rem; cursor: pointer; z-index: 999; box-shadow: 0 4px 12px rgba(88,101,242,.4); }
   #assistant-fab:hover { background: #4752c4; }
-
+  
+  /* ── New Room Modal ───────────────────── */
+  .modal-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+  }
+  .modal-overlay.open {
+      opacity: 1; pointer-events: auto; visibility: visible;
+  }
+  .modal-card {
+      background: #16213e;
+      border: 2px solid #5865f2;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .modal-overlay.open .modal-card {
+      transform: scale(1);
+  }
+  
+  .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; padding-bottom: 16px;
+      border-bottom: 1px solid #2a2a4a;
+  }
+  .modal-header .brand { color: #5865f2; font-size: 1.1rem; font-weight: 700; }
+  .modal-close {
+      background: none; border: none; color: #888; cursor: pointer;
+      font-size: 1.5rem; padding: 4px; line-height: 1;
+      transition: color 0.2s;
+  }
+  .modal-close:hover { color: #5865f2; }
+  
+  .room-type-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+      margin-bottom: 20px;
+  }
+  .room-type-card {
+      background: rgba(22,33,62,0.7);
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+  }
+  .room-type-card:hover {
+      border-color: #5865f2;
+      background: rgba(88,101,242,0.1);
+      transform: translateY(-2px);
+  }
+  .room-type-card .emoji { font-size: 2.5rem; }
+  .room-type-card h3 { color: #5865f2; font-size: 1rem; font-weight: 600; }
+  .room-type-card p { font-size: .8rem; color: #888; }
+  
+  .modal-footer {
+      display: flex; justify-content: flex-end; gap: 10px;
+      padding-top: 16px; border-top: 1px solid #2a2a4a;
+  }
+  .btn-secondary {
+      background: #2a2a4a; color: #ccc; border: none;
+      border-radius: 8px; padding: 10px 20px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: #3a3a5a; color: #fff; }
+  .btn-primary {
+      background: #5865f2; color: #fff; border: none;
+      border-radius: 8px; padding: 10px 20px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary:hover { background: #4752c4; }
+  
   @media (max-width: 600px) {
       .top-nav .nav-links { gap: 2px; }
       .top-nav a { font-size: .75rem; padding: 4px 8px; }
-      .rooms { padding: 0 12px; }
+      .room-type-grid { grid-template-columns: 1fr; }
+      .modal-card { width: 95%; padding: 16px; }
   }
 </style>
 </head>
@@ -73,23 +158,122 @@
     <a href="/" class="brand">🎧 KRK-9</a>
     <div class="nav-links">
         <a href="/" class="active">🏠 Rooms</a>
-        <a href="/chat">💬 Practice</a>
-        <a href="/news">📰 Briefing</a>
         <a href="/assistant">🤖 Assistant</a>
-        <button class="btn-create-room" onclick="alert('Create Room - not implemented yet')">➕ Create Room</button>
+        <button class="btn-create-room" id="btn-new-room">➕ New Room</button>
+        <span id="user" style="color:#888; margin-left: 12px;">Vaclav</span>
     </div>
 </nav>
 
 <header>
   <h1>🎧 KRK-9</h1>
-  <span id="user" style="color:#888;">Vaclav</span>
 </header>
 
 <div class="rooms" id="rooms"></div>
 
 <button id="assistant-fab" title="Asistente KRK-9" onclick="location.href='/assistant'">🤖</button>
 
+<!-- ─── New Room Modal ───────────────────── -->
+<div class="modal-overlay" id="modal-new-room">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="brand">🎧 KRK-9</div>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <h2 style="color:#5865f2; margin-bottom: 8px;">New Room</h2>
+        <p style="color:#888; font-size:.85rem; margin-bottom: 20px;">Choose a room type to create</p>
+        
+        <div class="room-type-grid">
+                    <div class="room-type-card" data-type="briefing">
+                        <div class="emoji">📰</div>
+                        <h3>Briefing</h3>
+                        <p>Morning news briefing with AI summaries</p>
+                    </div>
+                    <div class="room-type-card" data-type="chat">
+                        <div class="emoji">💬</div>
+                        <h3>Chat</h3>
+                        <p>English practice conversation room</p>
+                    </div>
+                    <div class="room-type-card" data-type="library">
+                        <div class="emoji">📚</div>
+                        <h3>Library</h3>
+                        <p>Books, papers, transcripts with Lila</p>
+                    </div>
+                    <div class="room-type-card" data-type="story">
+                        <div class="emoji">📖</div>
+                        <h3>Story</h3>
+                        <p>Interactive story-based learning</p>
+                    </div>
+                    <div class="room-type-card" data-type="work">
+                        <div class="emoji">💼</div>
+                        <h3>Work</h3>
+                        <p>Productivity & focus sessions</p>
+                    </div>
+                    <div class="room-type-card" data-type="games">
+                        <div class="emoji">🎮</div>
+                        <h3>Games</h3>
+                        <p>Fun language learning games</p>
+                    </div>
+                </div>
+    </div>
+</div>
+
+<button id="assistant-fab" title="Asistente KRK-9" onclick="location.href='/assistant'">🤖</button>
+
 <script>
+const USER_ID = 'legacy_vaclav';
+const ROOM_ICONS = { conversation: '💬', news: '📰', assistant: '🤖', custom: '🛠' };
+const ROOM_ROUTES = { conversation: '/chat', news: '/news', assistant: '/assistant' };
+
+// ─── Modal Logic ──────────────────────────
+const modal = document.getElementById('modal-new-room');
+const btnNewRoom = document.getElementById('btn-new-room');
+const modalClose = document.getElementById('modal-close');
+const modalCancel = document.getElementById('modal-cancel');
+const modalCreate = document.getElementById('modal-create');
+let selectedRoomType = null;
+
+function openModal() {
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    selectedRoomType = null;
+    modalCreate.disabled = true;
+    document.querySelectorAll('.room-type-card').forEach(c => c.classList.remove('selected'));
+}
+
+btnNewRoom.addEventListener('click', openModal);
+modalClose.addEventListener('click', closeModal);
+modalCancel.addEventListener('click', closeModal);
+
+document.querySelectorAll('.room-type-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('.room-type-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedRoomType = card.dataset.type;
+        modalCreate.disabled = false;
+    });
+});
+
+modalCreate.addEventListener('click', () => {
+    if (!selectedRoomType) return;
+    alert(`Create Room: ${selectedRoomType} — not implemented yet`);
+    closeModal();
+});
+
+// Close on overlay click
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+});
+
+// ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+});
+
 const USER_ID = 'legacy_vaclav';
 const ROOM_ICONS = { conversation: '💬', news: '📰', assistant: '🤖', custom: '🛠' };
 const ROOM_ROUTES = { conversation: '/chat', news: '/news', assistant: '/assistant' };
