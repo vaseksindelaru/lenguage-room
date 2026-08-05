@@ -274,10 +274,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
 });
 
-const USER_ID = 'legacy_vaclav';
-const ROOM_ICONS = { conversation: '💬', news: '📰', assistant: '🤖', custom: '🛠' };
-const ROOM_ROUTES = { conversation: '/chat', news: '/news', assistant: '/assistant' };
-
 async function load() {
   const r = await fetch(`/api/rooms?user_id=${USER_ID}`);
   const data = await r.json();
