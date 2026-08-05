@@ -306,6 +306,58 @@ def migrate_state_v2_to_v3(state: Dict[str, Any]) -> Dict[str, Any]:
 def get_user_rooms(state: Dict[str, Any], uid: str) -> list:
     return state.get("users", {}).get(uid, {}).get("rooms", [])
 
+def create_room(state: Dict[str, Any], uid: str, room_type: str, name: str = None, config: dict = None) -> dict | None:
+    """Create a new room for the user. Returns the created room or None if failed."""
+    # Ensure users dict exists
+    if "users" not in state:
+        state["users"] = {}
+    
+    user = state.get("users", {}).get(uid, {})
+    if not user:
+        # Create user if doesn't exist
+        user = {
+            "name": "Vaclav",
+            "interests": [],
+            "casete_vocab": {},
+            "sessions": [],
+            "active_session": None,
+            "rooms": [],
+            "assistant_config": dict(DEFAULT_ASSISTANT_CONFIG),
+            "news_queue": [],
+            "news_history": [],
+        }
+        state["users"][uid] = user
+    
+    # Generate room ID
+    room_id = room_type + "_" + str(int(datetime.now().timestamp() * 1000))
+    
+    # Default names if not provided
+    default_names = {
+        "briefing": "Morning Briefing",
+        "chat": "English Practice",
+        "library": "Library",
+        "story": "Story Mode",
+        "work": "Work Session",
+        "games": "Games"
+    }
+    
+    room = {
+        "id": room_id,
+        "type": room_type,
+        "name": name or default_names.get(room_type, room_type.capitalize()),
+        "enabled": True,
+    }
+    
+    # Add type-specific config
+    if room_type == "news" or room_type == "briefing":
+        room["config"] = config or json.loads(json.dumps(DEFAULT_NEWS_CONFIG))
+    elif room_type == "conversation" or room_type == "chat":
+        room["config"] = config or {}
+    
+    user.setdefault("rooms", []).append(room)
+    save_state(state)
+    return room
+
 def set_active_room(state: Dict[str, Any], uid: str, room_id: str) -> bool:
     user = state.get("users", {}).get(uid, {})
     if any(r.get("id") == room_id for r in user.get("rooms", [])):

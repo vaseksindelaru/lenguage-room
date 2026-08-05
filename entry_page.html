@@ -222,7 +222,17 @@
 <script>
 const USER_ID = 'legacy_vaclav';
 const ROOM_ICONS = { conversation: '💬', news: '📰', assistant: '🤖', custom: '🛠' };
-const ROOM_ROUTES = { conversation: '/chat', news: '/news', assistant: '/assistant' };
+const ROOM_ROUTES = { 
+    conversation: '/chat', 
+    chat: '/chat',
+    news: '/news', 
+    briefing: '/news',
+    library: '/library',
+    story: '/story',
+    work: '/work',
+    games: '/games',
+    assistant: '/assistant' 
+};
 
 // ─── Modal Logic ──────────────────────────
 const modal = document.getElementById('modal-new-room');
@@ -258,10 +268,42 @@ document.querySelectorAll('.room-type-card').forEach(card => {
     });
 });
 
-modalCreate.addEventListener('click', () => {
+modalCreate.addEventListener('click', async () => {
     if (!selectedRoomType) return;
-    alert(`Create Room: ${selectedRoomType} — not implemented yet`);
-    closeModal();
+    
+    modalCreate.disabled = true;
+    modalCreate.textContent = 'Creating...';
+    
+    try {
+        const response = await fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: USER_ID,
+                room_type: selectedRoomType
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.room) {
+            closeModal();
+            // Refresh rooms list
+            load();
+            // Navigate to the room
+            if (ROOM_ROUTES[data.room.type]) {
+                location.href = ROOM_ROUTES[data.room.type];
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Failed to create room'));
+            modalCreate.disabled = false;
+            modalCreate.textContent = 'Create Room';
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+        modalCreate.disabled = false;
+        modalCreate.textContent = 'Create Room';
+    }
 });
 
 // Close on overlay click

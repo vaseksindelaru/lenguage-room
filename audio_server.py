@@ -621,6 +621,30 @@ async def rooms_get_handler(request):
     rooms = get_user_rooms(state, uid)
     return web.json_response({"user_id": uid, "rooms": rooms})
 
+async def rooms_post_handler(request):
+    """POST /api/rooms — crea una nueva sala."""
+    from state_manager import load_state, save_state, create_room
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    
+    uid = body.get("user_id", "legacy_vaclav")
+    room_type = body.get("room_type")
+    name = body.get("name")
+    config = body.get("config")
+    
+    if not room_type:
+        return web.json_response({"error": "room_type required"}, status=400)
+    
+    state = load_state()
+    room = create_room(state, uid, room_type, name, config)
+    
+    if room:
+        return web.json_response({"success": True, "room": room}, status=201)
+    else:
+        return web.json_response({"error": "Failed to create room"}, status=500)
+
 # ─── Server Setup ──────────────────────────────────────────────────────────
 @web.middleware
 async def error_middleware(request, handler):
@@ -748,10 +772,12 @@ async def start_audio_server():
     # ─── Entry/Page Routes (nuevas páginas) ──────────────────────────
     assistant_route = app.router.add_get('/assistant', lambda r: web.FileResponse("./assistant_page.html"))
     news_route = app.router.add_get('/news', lambda r: web.FileResponse("./news_page.html"))
-    rooms_route = app.router.add_get('/api/rooms', rooms_get_handler)
+    rooms_get_route = app.router.add_get('/api/rooms', rooms_get_handler)
+    rooms_post_route = app.router.add_post('/api/rooms', rooms_post_handler)
     cors.add(assistant_route)
     cors.add(news_route)
-    cors.add(rooms_route)
+    cors.add(rooms_get_route)
+    cors.add(rooms_post_route)
 
     runner = web.AppRunner(app)
     await runner.setup()
