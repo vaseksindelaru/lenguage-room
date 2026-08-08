@@ -645,6 +645,35 @@ async def rooms_post_handler(request):
     else:
         return web.json_response({"error": "Failed to create room"}, status=500)
 
+async def rooms_delete_handler(request):
+    """DELETE /api/rooms/{room_id} — elimina una sala."""
+    from state_manager import load_state, save_state
+    room_id = request.match_info.get("room_id", "")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    uid = body.get("user_id", "legacy_vaclav")
+    
+    if not room_id:
+        return web.json_response({"error": "room_id required"}, status=400)
+    
+    state = load_state()
+    user = state.get("users", {}).get(uid, {})
+    rooms = user.get("rooms", [])
+    
+    # Find room index
+    room_idx = next((i for i, r in enumerate(rooms) if r.get("id") == room_id), None)
+    
+    if room_idx is None:
+        return web.json_response({"error": "Room not found"}, status=404)
+    
+    # Remove room
+    rooms.pop(room_idx)
+    save_state(state)
+    
+    return web.json_response({"success": True, "deleted_id": room_id})
+
 # ─── Server Setup ──────────────────────────────────────────────────────────
 @web.middleware
 async def error_middleware(request, handler):
@@ -774,10 +803,12 @@ async def start_audio_server():
     news_route = app.router.add_get('/news', lambda r: web.FileResponse("./news_page.html"))
     rooms_get_route = app.router.add_get('/api/rooms', rooms_get_handler)
     rooms_post_route = app.router.add_post('/api/rooms', rooms_post_handler)
+    rooms_delete_route = app.router.add_delete('/api/rooms/{room_id}', rooms_delete_handler)
     cors.add(assistant_route)
     cors.add(news_route)
     cors.add(rooms_get_route)
     cors.add(rooms_post_route)
+    cors.add(rooms_delete_route)
 
     runner = web.AppRunner(app)
     await runner.setup()

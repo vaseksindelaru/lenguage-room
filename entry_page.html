@@ -51,14 +51,61 @@
       position: relative; overflow: hidden;
   }
   .card:hover { border-color: #5865f2; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(88,101,242,0.2); }
-  .card.disabled { opacity: .4; cursor: not-allowed; }
-  .card.disabled:hover { transform: none; box-shadow: none; border-color: #2a2a4a; }
+  .card.coming-soon { opacity: 0.5; cursor: not-allowed; }
+  .card.coming-soon:hover { transform: none; box-shadow: none; border-color: #2a2a4a; }
+  .coming-soon {
+    font-size: 0.7rem;
+    color: #888;
+    background: #2a2a4a;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
   .card .emoji { font-size: 2rem; margin-bottom: 12px; }
   .card h2 { font-size: 1.1rem; margin-bottom: 8px; color: #fff; }
   .card p { font-size: .85rem; color: #999; }
   #assistant-fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
     background: #5865f2; border: none; font-size: 1.6rem; cursor: pointer; z-index: 999; box-shadow: 0 4px 12px rgba(88,101,242,.4); }
   #assistant-fab:hover { background: #4752c4; }
+
+  /* Room action buttons */
+  .room-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #2a2a4a;
+    justify-content: center;
+  }
+  .room-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .room-action-btn.play {
+    background: #5865f2;
+    color: #fff;
+  }
+  .room-action-btn.play:hover {
+    background: #4752c4;
+    transform: scale(1.05);
+  }
+  .room-action-btn.delete {
+    background: #2a2a4a;
+    color: #ff6b6b;
+  }
+  .room-action-btn.delete:hover {
+    background: #ff6b6b;
+    color: #fff;
+    transform: scale(1.05);
+  }
   
   /* ── New Room Modal ───────────────────── */
   .modal-overlay {
@@ -78,7 +125,7 @@
       padding: 24px;
       width: 90%;
       max-width: 480px;
-      max-height: 85vh;
+      max-height: 95vh;
       overflow-y: auto;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
       transform: scale(0.95);
@@ -103,7 +150,6 @@
   
   .room-type-grid {
       display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-      margin-bottom: 20px;
   }
   .room-type-card {
       background: rgba(22,33,62,0.7);
@@ -123,9 +169,26 @@
       background: rgba(88,101,242,0.1);
       transform: translateY(-2px);
   }
+  .room-type-card:has([disabled]), .room-type-card.coming-soon {
+      opacity: 0.5;
+      cursor: not-allowed;
+  }
+  .room-type-card:has([disabled]):hover, .room-type-card.coming-soon:hover {
+      border-color: #2a2a4a;
+      background: rgba(22,33,62,0.7);
+      transform: none;
+  }
   .room-type-card .emoji { font-size: 2.5rem; }
   .room-type-card h3 { color: #5865f2; font-size: 1rem; font-weight: 600; }
   .room-type-card p { font-size: .8rem; color: #888; }
+  .coming-soon {
+    font-size: 0.7rem;
+    color: #888;
+    background: #2a2a4a;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
   
   .modal-footer {
       display: flex; justify-content: flex-end; gap: 10px;
@@ -183,42 +246,41 @@
         <p style="color:#888; font-size:.85rem; margin-bottom: 20px;">Choose a room type to create</p>
         
         <div class="room-type-grid">
-                    <div class="room-type-card" data-type="briefing">
+                    <div class="room-type-card" data-type="briefing" data-route="/news">
                         <div class="emoji">📰</div>
                         <h3>Briefing</h3>
                         <p>Morning news briefing with AI summaries</p>
                     </div>
-                    <div class="room-type-card" data-type="chat">
+                    <div class="room-type-card" data-type="chat" data-route="/chat">
                         <div class="emoji">💬</div>
                         <h3>Chat</h3>
                         <p>English practice conversation room</p>
                     </div>
-                    <div class="room-type-card" data-type="library">
+                    <div class="room-type-card" data-type="library" data-route="#" disabled>
                         <div class="emoji">📚</div>
                         <h3>Library</h3>
                         <p>Books, papers, transcripts with Lila</p>
+                        <span class="coming-soon">Soon</span>
                     </div>
-                    <div class="room-type-card" data-type="story">
+                    <div class="room-type-card" data-type="story" data-route="#" disabled>
                         <div class="emoji">📖</div>
                         <h3>Story</h3>
                         <p>Interactive story-based learning</p>
+                        <span class="coming-soon">Soon</span>
                     </div>
-                    <div class="room-type-card" data-type="work">
+                    <div class="room-type-card" data-type="work" data-route="#" disabled>
                         <div class="emoji">💼</div>
                         <h3>Work</h3>
                         <p>Productivity & focus sessions</p>
+                        <span class="coming-soon">Soon</span>
                     </div>
-                    <div class="room-type-card" data-type="games">
+                    <div class="room-type-card" data-type="games" data-route="#" disabled>
                         <div class="emoji">🎮</div>
                         <h3>Games</h3>
                         <p>Fun language learning games</p>
+                        <span class="coming-soon">Soon</span>
                     </div>
                 </div>
-        
-        <div class="modal-footer">
-            <button class="btn-secondary" id="modal-cancel">Cancel</button>
-            <button class="btn-primary" id="modal-create" disabled>Create Room</button>
-        </div>
     </div>
 </div>
 
@@ -243,9 +305,6 @@ const ROOM_ROUTES = {
 const modal = document.getElementById('modal-new-room');
 const btnNewRoom = document.getElementById('btn-new-room');
 const modalClose = document.getElementById('modal-close');
-const modalCancel = document.getElementById('modal-cancel');
-const modalCreate = document.getElementById('modal-create');
-let selectedRoomType = null;
 
 function openModal() {
     modal.classList.add('open');
@@ -255,60 +314,26 @@ function openModal() {
 function closeModal() {
     modal.classList.remove('open');
     document.body.style.overflow = '';
-    selectedRoomType = null;
-    modalCreate.disabled = true;
     document.querySelectorAll('.room-type-card').forEach(c => c.classList.remove('selected'));
 }
 
 btnNewRoom.addEventListener('click', openModal);
 modalClose.addEventListener('click', closeModal);
-modalCancel.addEventListener('click', closeModal);
 
 document.querySelectorAll('.room-type-card').forEach(card => {
     card.addEventListener('click', () => {
+        // Skip disabled/coming-soon cards
+        if (card.hasAttribute('disabled') || card.classList.contains('coming-soon')) return;
+        
         document.querySelectorAll('.room-type-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
-        selectedRoomType = card.dataset.type;
-        modalCreate.disabled = false;
-    });
-});
-
-modalCreate.addEventListener('click', async () => {
-    if (!selectedRoomType) return;
-    
-    modalCreate.disabled = true;
-    modalCreate.textContent = 'Creating...';
-    
-    try {
-        const response = await fetch('/api/rooms', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: USER_ID,
-                room_type: selectedRoomType
-            })
-        });
         
-        const data = await response.json();
-        
-        if (data.success && data.room) {
-            closeModal();
-            // Refresh rooms list
-            load();
-            // Navigate to the room
-            if (ROOM_ROUTES[data.room.type]) {
-                location.href = ROOM_ROUTES[data.room.type];
-            }
-        } else {
-            alert('Error: ' + (data.error || 'Failed to create room'));
-            modalCreate.disabled = false;
-            modalCreate.textContent = 'Create Room';
+        const route = card.dataset.route;
+        if (route && route !== '#') {
+            // Direct navigation on click - no Create button needed
+            location.href = route;
         }
-    } catch (e) {
-        alert('Error: ' + e.message);
-        modalCreate.disabled = false;
-        modalCreate.textContent = 'Create Room';
-    }
+    });
 });
 
 // Close on overlay click
@@ -330,13 +355,69 @@ async function load() {
     const div = document.createElement('div');
     div.className = 'card' + (room.enabled === false ? ' disabled' : '');
     const desc = room.type === 'news' ? (room.config?.sources?.map(s=>s.name).join(', ') || 'RSS') : room.type;
-    div.innerHTML = `<div class="emoji">${ROOM_ICONS[room.type] || '🛠'}</div>
-                     <h2>${room.name}</h2><p>${desc}</p>`;
+    
+    // Room actions: Play (enter) and Delete (trash)
+    const actionsHtml = room.enabled !== false ? `
+      <div class="room-actions">
+        <button class="room-action-btn play" data-room-id="${room.id}" title="Enter room">▶</button>
+        <button class="room-action-btn delete" data-room-id="${room.id}" title="Delete room">🗑</button>
+      </div>
+    ` : '';
+    
+    div.innerHTML = `
+      <div class="emoji">${ROOM_ICONS[room.type] || '🛠'}</div>
+      <h2>${room.name}</h2>
+      <p>${desc}</p>
+      ${actionsHtml}
+    `;
+    
     if (room.enabled !== false && ROOM_ROUTES[room.type]) {
-      div.onclick = () => location.href = ROOM_ROUTES[room.type];
+      div.onclick = (e) => {
+        // Don't navigate if clicking on action buttons
+        if (!e.target.closest('.room-action-btn')) {
+          location.href = ROOM_ROUTES[room.type];
+        }
+      };
     }
+    
     document.getElementById('rooms').appendChild(div);
   }
+  
+  // Add event listeners for action buttons
+  document.querySelectorAll('.room-action-btn.play').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const roomId = btn.dataset.roomId;
+      const room = data.rooms.find(r => r.id === roomId);
+      if (room && ROOM_ROUTES[room.type]) {
+        location.href = ROOM_ROUTES[room.type];
+      }
+    });
+  });
+  
+  document.querySelectorAll('.room-action-btn.delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const roomId = btn.dataset.roomId;
+      if (confirm('Delete this room?')) {
+        try {
+          const resp = await fetch(`/api/rooms/${roomId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: USER_ID })
+          });
+          const data = await resp.json();
+          if (data.success) {
+            load(); // Refresh
+          } else {
+            alert('Error: ' + (data.error || 'Failed to delete room'));
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      }
+    });
+  });
 }
 load();
 </script>
