@@ -215,20 +215,20 @@
   }
 </style>
 </head>
-<body>
 <!-- ─── Top Navigation Bar ─────────────────────── -->
-<nav class="top-nav">
+<nav class="top-nav" id="top-nav">
     <a href="/" class="brand">🎧 KRK-9</a>
-    <div class="nav-links">
-        <a href="/" class="active">🏠 Rooms</a>
-        <a href="/assistant">🤖 Assistant</a>
-        <button class="btn-create-room" id="btn-new-room">➕ New Room</button>
-        <span id="user" style="color:#888; margin-left: 12px;">Vaclav</span>
+    <div class="nav-links" id="nav-links">
+        <a href="/" class="active" data-section="rooms">🏠 Rooms</a>
+        <a href="/assistant" data-section="assistant">🤖 Assistant</a>
+    </div>
+    <div class="nav-links-bottom" id="nav-links-bottom">
+        <!-- Los botones de módulos se insertarán aquí dinámicamente -->
     </div>
 </nav>
 
 <header>
-  <h1>🎧 KRK-9</h1>
+  <h1 style="margin: 10px 0; color: #5865f2;" id="page-title">🎧 KRK-9</h1>
 </header>
 
 <div class="rooms" id="rooms"></div>

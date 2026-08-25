@@ -68,12 +68,14 @@
 </head>
 <body>
 <!-- ─── Top Navigation Bar ─────────────────────── -->
-<nav class="top-nav">
+<nav class="top-nav" id="top-nav">
     <a href="/" class="brand">🎧 KRK-9</a>
-    <div class="nav-links">
-        <a href="/">🏠 Salas</a>
-        <a href="/chat">💬 Practice</a>
-        <a href="/news" class="active">📰 Briefing</a>
+    <div class="nav-links" id="nav-links">
+        <a href="/" data-section="rooms">🏠 Rooms</a>
+        <a href="/assistant" data-section="assistant">🤖 Assistant</a>
+        <a href="/news" data-section="news">📰 Briefing</a>
+    </div>
+    <div class="nav-links-bottom" id="nav-links-bottom">
         <a href="/assistant">🤖 Assistant</a>
     </div>
 </nav>

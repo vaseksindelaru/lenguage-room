@@ -78,20 +78,21 @@
   }
 </style>
 </head>
-<body>
 <!-- ─── Top Navigation Bar ─────────────────────── -->
-<nav class="top-nav">
+<nav class="top-nav" id="top-nav">
     <a href="/" class="brand">🎧 KRK-9</a>
-    <div class="nav-links">
-        <a href="/">🏠 Salas</a>
-        <a href="/chat">💬 Practice</a>
-        <a href="/news">📰 Briefing</a>
-        <a href="/assistant" class="active">🤖 Assistant</a>
+    <div class="nav-links" id="nav-links">
+        <a href="/" data-section="rooms">🏠 Rooms</a>
+        <a href="/assistant" data-section="assistant">🤖 Assistant</a>
+    </div>
+    <div class="nav-links-bottom" id="nav-links-bottom">
+        <!-- Los botones de módulos se insertarán aquí dinámicamente -->
     </div>
 </nav>
 
-<div class="chat-container">
-    <div class="messages" id="messages"></div>
+<header>
+  <h1 style="margin: 10px 0; color: #5865f2;" id="page-title">🎧 KRK-9</h1>
+</header>
     <div class="input-bar">
         <button class="btn-voice" id="btnVoice" onclick="toggleVoice()" title="Hold to speak">🎤</button>
         <textarea id="input" placeholder="Type in English..." rows="1"
