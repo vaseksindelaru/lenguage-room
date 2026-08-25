@@ -165,6 +165,7 @@
         <button class="tab active" data-tab="sources"><span class="tab-icon">📡</span> Sources</button>
         <button class="tab" data-tab="agent"><span class="tab-icon">🧠</span> Agent</button>
         <button class="tab" data-tab="output"><span class="tab-icon">📋</span> Output</button>
+        <button class="tab" data-tab="productivity"><span class="tab-icon">💼</span> Productivity</button>
         <button class="tab" data-tab="advanced"><span class="tab-icon">⚙️</span> Advanced</button>
         <button class="tab" data-tab="briefing"><span class="tab-icon">📰</span> Briefing</button>
     </div>
@@ -489,6 +490,39 @@
         <button class="btn btn-secondary" id="btnRefresh" onclick="refreshBriefing()">📰 Generate Briefing</button>
     </div>
 </div>
+    <!-- ════════ Productivity Panel ════════ -->
+    <div class="panel" id="panel-productivity">
+        <div class="section">
+            <div class="section-title">Productivity Hub</div>
+            <p style="font-size:.8rem; color:#888; margin-bottom:12px;">
+                Productivity tools for job search, CV building, and interview practice
+            </p>
+            <div style="background:#16213e;border:1px solid #2a2a4a;border-radius:10px;padding:20px;margin-top:12px;">
+                <h4 style="margin-top:0;color:#5865f2;">💼 Smart Job Aggregator</h4>
+                <p style="color:#666; margin-bottom:8px;">Search for real jobs in your target language</p>
+                <input type="text" id="jobSearch" placeholder="Ej: Diseñador Gráfico en Madrid" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;" disabled>
+                <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="searchJobs()" disabled>🔍 Buscar Trabajos</button>
+                <hr style="margin:12px 0;">
+                <h4 style="margin-top:0;color:#5865f2;">📄 Bilingual CV Builder</h4>
+                <p style="color:#666; margin-bottom:8px;">Build CV side-by-side in both languages</p>
+                <textarea id="cvNative" rows="3" placeholder="Tus datos en español..." style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;resize:vertical;"></textarea>
+                <textarea id="cvTarget" rows="3" placeholder="Your data in English..." style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;resize:vertical;"></textarea>
+                <hr style="margin:12px 0;">
+                <h4 style="margin-top:0;color:#5865f2;">🎤 Interview Simulator</h4>
+                <p style="color:#666; margin-bottom:8px;">Practice interview questions in the target language</p>
+                <textarea id="interviewQ" rows="3" placeholder="Escribe tus experiencias laborales verídicas aquí..." style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;resize:vertical;"></textarea>
+                <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="startInterview()" disabled>🤖 Comenzar Simulacro</button>
+            </div>
+        </div>
+        <div class="section"><div class="section-title">📅 Calendar & Tasks</div>
+            <p style="font-size:.8rem; color:#888;">Gestión de tareas y citas programadas</p>
+            <input type="text" id="taskInput" placeholder="Nueva tarea o cita" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;" disabled>
+            <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="addTask()" disabled>✏️ Agregar Tarea</button></div>
+        <div class="section"><div class="section-title">💡 Ideas & Notes</div>
+            <p style="font-size:.8rem; color:#888;">Pensamiento directo y notas</p>
+            <textarea id="notesInput" rows="3" placeholder="Tus ideas en español... o en inglés" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px 14px;color:#ddd;font-size:.85rem;outline:none;resize:vertical;" disabled></textarea>
+            <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveNote()" disabled>💾 Guardar Nota</button></div>
+    </div>
 
 <div class="toast" id="toast"></div>
 
