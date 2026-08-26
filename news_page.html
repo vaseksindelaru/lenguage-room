@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📰 KRK-9 — Morning Briefing</title>
+<title>📰 KRK-9 — Morning </title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,7 +70,7 @@
     <a href="/" class="brand">🎧 KRK-9</a>
     <div class="nav-links" id="nav-links">
         <a href="/" class="module-btn active" data-section="rooms">🏠 Salas</a>
-        <a href="/news" class="module-btn" data-section="briefing">📰 Briefing</a>
+        <a href="/news" class="module-btn" data-section="briefing"></a>
         <a href="/chat" class="module-btn" data-section="chat">💬 Chat</a>
         <a href="#" class="module-btn disabled" data-section="library">📚 Library</a>
         <a href="#" class="module-btn disabled" data-section="story">📖 Story</a>
@@ -83,19 +83,19 @@
 </nav>
 
 <div class="container">'''
-        <a href="/news" data-section="news">📰 Briefing</a>
+        
     </div>
     <div class="nav-links-bottom" id="nav-links-bottom">
     </div>
 </nav>
 
 <div class="container">
-    <h1>📰 Morning Briefing</h1>
+    <h1>📰 Morning </h1>
     <p class="subtitle">Resumen diario de noticias en inglés — práctica de lectura y escucha</p>
 
     <div class="controls">
-        <button class="btn-primary" id="btnRefresh" onclick="refreshBriefing()">🔄 Generar briefing</button>
-        <button class="btn-secondary" id="btnRead" onclick="readBriefing()" disabled>🔊 Leer en voz alta</button>
+        <button class="btn-primary" id="btnRefresh" onclick="refresh()">🔄 Generar briefing</button>
+        <button class="btn-secondary" id="btnRead" onclick="read()" disabled>🔊 Leer en voz alta</button>
         <button class="btn-secondary" id="btnSettings" onclick="window.location.href='/news-config'">⚙️ Configuración</button>
     </div>
 
@@ -114,7 +114,7 @@ function showToast(msg, isError = false) {
     setTimeout(() => t.className = 'toast', 3000);
 }
 
-async function loadBriefing() {
+async function load() {
     const content = document.getElementById('briefingContent');
     content.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Cargando briefing...</p></div>';
     try {
@@ -122,7 +122,7 @@ async function loadBriefing() {
         const data = await r.json();
         if (data.briefing) {
             content.innerHTML = `<div class="briefing-card">
-                <h2>📰 Briefing del día</h2>
+                <h2> del día</h2>
                 <div class="markdown">${data.briefing}</div>
                 <div class="timestamp">${data.cached ? '📌 Cacheado' : '🆕 Generado ahora'}</div>
             </div>`;
@@ -137,7 +137,7 @@ async function loadBriefing() {
     }
 }
 
-async function refreshBriefing() {
+async function refresh() {
     const btn = document.getElementById('btnRefresh');
     btn.disabled = true; btn.textContent = '⏳ Generando...';
     try {
@@ -148,12 +148,12 @@ async function refreshBriefing() {
         const data = await r.json();
         if (data.briefing) {
             document.getElementById('briefingContent').innerHTML = `<div class="briefing-card">
-                <h2>📰 Briefing del día</h2>
+                <h2> del día</h2>
                 <div class="markdown">${data.briefing}</div>
                 <div class="timestamp">🆕 Generado ahora</div>
             </div>`;
             document.getElementById('btnRead').disabled = false;
-            showToast('✅ Briefing generado');
+            showToast('✅  generado');
         } else {
             showToast('❌ ' + (data.error || 'Error generando briefing'), true);
         }
@@ -164,7 +164,7 @@ async function refreshBriefing() {
     }
 }
 
-function readBriefing() {
+function read() {
     const text = document.querySelector('.briefing-card .markdown')?.textContent;
     if (!text) return;
     const u = new SpeechSynthesisUtterance(text.slice(0, 4000));
@@ -172,10 +172,12 @@ function readBriefing() {
     speechSynthesis.speak(u);
 }
 
-loadBriefing();
+load();
 </script>
 
 <button id="assistant-fab" title="Asistente KRK-9" onclick="location.href='/assistant'">🤖</button>
 
-</body>
+
+
+</body></body>
 </html>
